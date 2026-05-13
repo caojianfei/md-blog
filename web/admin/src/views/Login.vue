@@ -1,16 +1,33 @@
 <script setup>
 import { reactive, ref } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { request } from "../utils/request";
 import { useUserStore } from "../store/user";
 import { Lock, User, LogIn, AlertCircle } from "lucide-vue-next";
 
+const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
 const loading = ref(false);
 const errorText = ref("");
 const loginForm = reactive({ username: "admin", password: "admin123456" });
 
+/**
+ * 解析登录成功后的回跳地址，避免跳回登录页或非法路径。
+ */
+const getRedirectPath = () => {
+  const redirect = route.query.redirect;
+
+  if (typeof redirect !== "string" || !redirect.startsWith("/")) {
+    return "/";
+  }
+
+  return redirect === "/login" ? "/" : redirect;
+};
+
+/**
+ * 提交登录请求并在成功后跳回用户最初访问的页面。
+ */
 const login = async () => {
   if (!loginForm.username || !loginForm.password) {
     errorText.value = "请输入用户名和密码";
@@ -22,7 +39,7 @@ const login = async () => {
   try {
     await request("/api/admin/login", { method: "POST", body: JSON.stringify(loginForm) });
     await userStore.loadMe();
-    router.push("/");
+    router.replace(getRedirectPath());
   } catch (err) {
     errorText.value = err.message || "登录失败，请检查用户名或密码";
   } finally {

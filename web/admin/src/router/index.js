@@ -58,6 +58,17 @@ const router = createRouter({
   routes
 });
 
+/**
+ * 规范化登录回跳地址，避免跳转到站外地址或登录页自身。
+ */
+const resolveRedirectPath = (redirect) => {
+  if (typeof redirect !== 'string' || !redirect.startsWith('/')) {
+    return '/';
+  }
+
+  return redirect === '/login' ? '/' : redirect;
+};
+
 router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore();
   
@@ -65,7 +76,10 @@ router.beforeEach(async (to, from, next) => {
     if (!userStore.authed) {
       await userStore.loadMe();
       if (!userStore.authed) {
-        next('/login');
+        next({
+          path: '/login',
+          query: { redirect: to.fullPath }
+        });
       } else {
         next();
       }
@@ -73,7 +87,7 @@ router.beforeEach(async (to, from, next) => {
       next();
     }
   } else if (to.path === '/login' && userStore.authed) {
-    next('/');
+    next(resolveRedirectPath(to.query.redirect));
   } else {
     next();
   }
