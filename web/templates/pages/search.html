@@ -1,0 +1,4 @@
+{{define "search"}}{{template "base" .}}{{end}}
+{{define "content"}}
+<section class="container" style="padding: 40px 0 48px;"><div class="card"><h1>搜索</h1><form class="search-form" action="/search" method="get"><input type="search" name="q" value="{{.Query}}" placeholder="{{.Site.SearchPlaceholder}}"><button class="button" type="submit">搜索</button></form></div>{{if .Articles}}{{range .Articles}}{{template "article_card" .}}{{end}}{{else}}<div class="card empty">没有找到与“{{.Query}}”相关的文章。</div>{{end}}</section>
+{{end}}

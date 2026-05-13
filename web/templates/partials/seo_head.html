@@ -1,0 +1,12 @@
+{{define "seo_head"}}
+<title>{{.Meta.Title}}</title>
+<meta name="description" content="{{.Meta.Description}}">
+<meta name="keywords" content="{{.Meta.Keywords}}">
+<link rel="canonical" href="{{.Meta.Canonical}}">
+<meta property="og:title" content="{{.Meta.Title}}">
+<meta property="og:description" content="{{.Meta.Description}}">
+<meta property="og:type" content="{{.Meta.Type}}">
+<meta property="og:url" content="{{.Meta.Canonical}}">
+{{if .Meta.OGImage}}<meta property="og:image" content="{{.Meta.OGImage}}">{{end}}
+<meta name="twitter:card" content="summary_large_image">
+{{end}}

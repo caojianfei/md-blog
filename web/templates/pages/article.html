@@ -1,0 +1,16 @@
+{{define "article"}}{{template "base" .}}{{end}}
+{{define "content"}}
+<section class="container" style="padding: 40px 0 48px;">
+  <article class="article-shell">
+    <div class="post-meta">{{formatDate .Article.PublishedAt "2006-01-02"}}{{if .Article.Category}} · <a href="/categories/{{pathEscape .Article.Category.Slug}}">{{.Article.Category.Name}}</a>{{end}}</div>
+    <h1>{{.Article.Title}}</h1>
+    {{if .Article.CoverImage}}<img class="cover" src="{{.Article.CoverImage}}" alt="{{.Article.Title}}">{{end}}
+    <div class="chip-list" style="margin-bottom: 20px;">{{range .Article.Tags}}<a class="chip" href="/tags/{{pathEscape .Slug}}"># {{.Name}}</a>{{end}}</div>
+    <div class="article-content">{{safe .Article.HTMLContent}}</div>
+  </article>
+  <div class="main-grid" style="grid-template-columns: 1fr 1fr; margin-top: 24px;">
+    <div class="card">{{if .PrevArticle}}上一篇：<a href="/posts/{{pathEscape .PrevArticle.Slug}}">{{.PrevArticle.Title}}</a>{{else}}没有上一篇{{end}}</div>
+    <div class="card">{{if .NextArticle}}下一篇：<a href="/posts/{{pathEscape .NextArticle.Slug}}">{{.NextArticle.Title}}</a>{{else}}没有下一篇{{end}}</div>
+  </div>
+</section>
+{{end}}

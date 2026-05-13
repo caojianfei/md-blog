@@ -1,0 +1,4 @@
+{{define "archives"}}{{template "base" .}}{{end}}
+{{define "content"}}
+<section class="container" style="padding: 40px 0 48px;"><div class="card"><h1>归档</h1><div class="chip-list">{{range .Archives}}<span class="chip">{{.Year}}-{{.Month}} · {{.Count}} 篇</span>{{end}}</div></div></section>
+{{end}}

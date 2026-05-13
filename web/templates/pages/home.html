@@ -1,0 +1,18 @@
+{{define "home"}}{{template "base" .}}{{end}}
+{{define "content"}}
+<section class="hero"><div class="container"><div class="hero-card"><h1>{{.Site.HeroTitle}}</h1><p>{{.Site.HeroDescription}}</p><form class="search-form" action="/search" method="get"><input type="search" name="q" placeholder="{{.Site.SearchPlaceholder}}"><button class="button" type="submit">搜索</button></form></div></div></section>
+<section class="container main-grid">
+  <div>
+    {{if .Articles}}{{range .Articles}}{{template "article_card" .}}{{end}}{{else}}<div class="card empty">还没有已发布的文章。</div>{{end}}
+    <div class="pagination">
+      {{if gt .CurrentPage 1}}<a class="chip" href="/?page={{dec .CurrentPage}}">上一页</a>{{end}}
+      <span class="muted">第 {{.CurrentPage}} / {{.TotalPages}} 页</span>
+      {{if lt .CurrentPage .TotalPages}}<a class="chip" href="/?page={{inc .CurrentPage}}">下一页</a>{{end}}
+    </div>
+  </div>
+  <aside class="sidebar">
+    <section class="card"><h3>分类</h3><div class="chip-list">{{range .Categories}}<a class="chip" href="/categories/{{pathEscape .Slug}}">{{.Name}}</a>{{end}}</div></section>
+    <section class="card"><h3>标签</h3><div class="chip-list">{{range .Tags}}<a class="chip" href="/tags/{{pathEscape .Slug}}"># {{.Name}}</a>{{end}}</div></section>
+  </aside>
+</section>
+{{end}}

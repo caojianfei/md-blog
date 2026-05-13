@@ -1,0 +1,4 @@
+{{define "tag"}}{{template "base" .}}{{end}}
+{{define "content"}}
+<section class="container" style="padding: 40px 0 48px;"><div class="card"><h1>标签：# {{.CurrentTag.Name}}</h1><p class="muted">{{.CurrentTag.Description}}</p></div>{{if .Articles}}{{range .Articles}}{{template "article_card" .}}{{end}}{{else}}<div class="card empty">当前标签下暂无文章。</div>{{end}}</section>
+{{end}}

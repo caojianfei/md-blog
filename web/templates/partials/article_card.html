@@ -1,0 +1,12 @@
+{{define "article_card"}}
+<article class="card">
+  <div class="post-meta">{{formatDate .PublishedAt "2006-01-02"}}{{if .Category}} · <a href="/categories/{{pathEscape .Category.Slug}}">{{.Category.Name}}</a>{{end}}</div>
+  <h2><a href="/posts/{{pathEscape .Slug}}">{{.Title}}</a></h2>
+  <p class="muted">{{.Excerpt}}</p>
+  {{if .Tags}}
+  <div class="chip-list">
+    {{range .Tags}}<a class="chip" href="/tags/{{pathEscape .Slug}}"># {{.Name}}</a>{{end}}
+  </div>
+  {{end}}
+</article>
+{{end}}
