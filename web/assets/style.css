@@ -174,7 +174,6 @@ input {
   letter-spacing: 0.04em;
 }
 
-.site-brand__prefix,
 .site-brand__subtitle,
 .meta-text,
 .eyebrow,
@@ -187,16 +186,10 @@ input {
   font-family: "JetBrains Mono", ui-monospace, monospace;
 }
 
-.site-brand__prefix,
 .site-brand__subtitle,
 .meta-text,
 .muted {
   color: var(--text-soft);
-}
-
-.site-brand__prefix {
-  font-size: 0.78rem;
-  text-transform: uppercase;
 }
 
 .site-brand__subtitle {
@@ -247,7 +240,41 @@ input {
 }
 
 .theme-toggle {
+  width: 44px;
+  height: 44px;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.theme-toggle__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-toggle__icon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.theme-toggle__icon--sun {
+  display: none;
+}
+
+.theme-toggle[data-theme="dark"] .theme-toggle__icon--sun {
+  display: inline-flex;
+}
+
+.theme-toggle[data-theme="dark"] .theme-toggle__icon--moon {
+  display: none;
 }
 
 .site-main {

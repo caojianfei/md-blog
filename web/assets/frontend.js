@@ -1,19 +1,33 @@
 const themeOrder = ["system", "light", "dark"];
-const themeLabels = {
-  system: "theme: auto",
-  light: "theme: light",
-  dark: "theme: dark",
-};
+const darkMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
 function getStoredTheme() {
   return localStorage.getItem("site-theme") || "system";
 }
 
+function getEffectiveTheme(theme) {
+  if (theme === "dark") {
+    return "dark";
+  }
+
+  if (theme === "light") {
+    return "light";
+  }
+
+  return darkMediaQuery.matches ? "dark" : "light";
+}
+
 function applyTheme(theme) {
   document.documentElement.setAttribute("data-theme", theme);
-  const label = document.querySelector("[data-theme-toggle-label]");
-  if (label) {
-    label.textContent = themeLabels[theme] || themeLabels.system;
+  const button = document.querySelector("[data-theme-toggle]");
+  if (button) {
+    const effectiveTheme = getEffectiveTheme(theme);
+    const nextTheme = effectiveTheme === "dark" ? "light" : "dark";
+    const actionLabel = nextTheme === "dark" ? "切换到深色模式" : "切换到浅色模式";
+
+    button.dataset.theme = effectiveTheme;
+    button.setAttribute("aria-label", actionLabel);
+    button.setAttribute("title", actionLabel);
   }
 }
 
@@ -31,10 +45,17 @@ function initThemeToggle() {
   applyTheme(theme);
 
   button.addEventListener("click", () => {
-    const currentIndex = themeOrder.indexOf(document.documentElement.getAttribute("data-theme"));
-    const nextTheme = themeOrder[(currentIndex + 1 + themeOrder.length) % themeOrder.length];
+    const currentTheme = document.documentElement.getAttribute("data-theme") || theme;
+    const nextTheme = getEffectiveTheme(currentTheme) === "dark" ? "light" : "dark";
     localStorage.setItem("site-theme", nextTheme);
     applyTheme(nextTheme);
+  });
+
+  darkMediaQuery.addEventListener("change", () => {
+    const currentTheme = document.documentElement.getAttribute("data-theme") || "system";
+    if (currentTheme === "system") {
+      applyTheme("system");
+    }
   });
 }
 
