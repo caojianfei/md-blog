@@ -1,26 +1,16 @@
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from "vue";
+import { computed, nextTick, onMounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { request } from "../utils/request";
 import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import "highlight.js/styles/github-dark.css";
-import { 
-  ArrowLeft,
-  Save,
-  Send,
-  Image as ImageIcon,
-  Link,
-  Code,
-  Bold,
-  Heading1,
-  Heading2,
-  Columns,
-  Eye,
-  PenLine,
-  ChevronDown,
-  ChevronUp
-} from "lucide-vue-next";
+import { ArrowLeft, ChevronDown, ChevronUp, Save, Send } from "lucide-vue-next";
+import CoverUploadField from "../components/CoverUploadField.vue";
+import EmojiPicker from "../components/EmojiPicker.vue";
+import MarkdownToolbar from "../components/MarkdownToolbar.vue";
+import TagSelector from "../components/TagSelector.vue";
+import { request } from "../utils/request";
+import { uploadMedia } from "../utils/media";
 
 const route = useRoute();
 const router = useRouter();
@@ -37,18 +27,292 @@ const md = new MarkdownIt({
 });
 
 const editor = reactive({
-  id: 0, title: "", slug: "", excerpt: "", content: "", coverImage: "",
-  categoryId: null, tagIds: [], status: "draft", seoDescription: "", seoKeywords: "",
+  id: 0,
+  title: "",
+  slug: "",
+  excerpt: "",
+  content: "",
+  coverImage: "",
+  categoryId: null,
+  tagIds: [],
+  status: "draft",
+  seoDescription: "",
+  seoKeywords: "",
 });
+
 const categories = ref([]);
 const tags = ref([]);
-const previewMode = ref("split"); // edit, split, preview
+const previewMode = ref("split");
 const editorMessage = ref("");
-const isSettingsOpen = ref(true); // Toggle meta settings
+const isSettingsOpen = ref(true);
+const isEmojiPickerOpen = ref(false);
+const editorTextarea = ref(null);
+const editorSelection = reactive({
+  start: 0,
+  end: 0,
+});
 
 const isEdit = computed(() => !!route.params.id);
 const previewHtml = computed(() => md.render(editor.content || ""));
 const editorWords = computed(() => (editor.content || "").trim().split(/\s+/).filter(Boolean).length);
+
+const showEditorMessage = (message) => {
+  editorMessage.value = message;
+  if (message) {
+    window.setTimeout(() => {
+      if (editorMessage.value === message) {
+        editorMessage.value = "";
+      }
+    }, 3000);
+  }
+};
+
+const syncEditorSelection = () => {
+  const textarea = editorTextarea.value;
+  if (!textarea) {
+    return;
+  }
+
+  editorSelection.start = textarea.selectionStart ?? editorSelection.start;
+  editorSelection.end = textarea.selectionEnd ?? editorSelection.end;
+};
+
+const ensureEditorVisible = async () => {
+  if (previewMode.value === "preview") {
+    previewMode.value = window.innerWidth < 640 ? "edit" : "split";
+    await nextTick();
+  }
+  return editorTextarea.value;
+};
+
+const getSelectionSnapshot = async () => {
+  const textarea = await ensureEditorVisible();
+  const content = editor.content || "";
+
+  if (textarea) {
+    syncEditorSelection();
+    return {
+      content,
+      start: textarea.selectionStart ?? editorSelection.start,
+      end: textarea.selectionEnd ?? editorSelection.end,
+      scrollTop: textarea.scrollTop,
+    };
+  }
+
+  return {
+    content,
+    start: Math.min(editorSelection.start, content.length),
+    end: Math.min(editorSelection.end, content.length),
+    scrollTop: 0,
+  };
+};
+
+const applyEditorChange = async (nextContent, selectionStart, selectionEnd, scrollTop = 0) => {
+  editor.content = nextContent;
+  await nextTick();
+
+  const textarea = editorTextarea.value;
+  if (!textarea) {
+    editorSelection.start = selectionStart;
+    editorSelection.end = selectionEnd;
+    return;
+  }
+
+  textarea.focus();
+  textarea.selectionStart = selectionStart;
+  textarea.selectionEnd = selectionEnd;
+  textarea.scrollTop = scrollTop;
+  syncEditorSelection();
+};
+
+const replaceRange = async (
+  start,
+  end,
+  text,
+  {
+    selectionStartOffset = text.length,
+    selectionEndOffset = text.length,
+    scrollTop = 0,
+  } = {}
+) => {
+  const current = editor.content || "";
+  const nextContent = `${current.slice(0, start)}${text}${current.slice(end)}`;
+  await applyEditorChange(
+    nextContent,
+    start + selectionStartOffset,
+    start + selectionEndOffset,
+    scrollTop
+  );
+};
+
+const replaceSelection = async (transformer) => {
+  const snapshot = await getSelectionSnapshot();
+  const selectedText = snapshot.content.slice(snapshot.start, snapshot.end);
+  const result = transformer(selectedText, snapshot);
+
+  await replaceRange(snapshot.start, snapshot.end, result.text, {
+    selectionStartOffset: result.selectionStartOffset,
+    selectionEndOffset: result.selectionEndOffset,
+    scrollTop: snapshot.scrollTop,
+  });
+};
+
+const wrapSelection = async (before, after, placeholder) => {
+  await replaceSelection((selectedText) => {
+    const value = selectedText || placeholder;
+    return {
+      text: `${before}${value}${after}`,
+      selectionStartOffset: before.length,
+      selectionEndOffset: before.length + value.length,
+    };
+  });
+};
+
+const prefixSelectedLines = async (prefix) => {
+  const snapshot = await getSelectionSnapshot();
+  const blockStart = snapshot.content.lastIndexOf("\n", Math.max(0, snapshot.start - 1)) + 1;
+  const lineBreakIndex = snapshot.content.indexOf("\n", snapshot.end);
+  const blockEnd = lineBreakIndex === -1 ? snapshot.content.length : lineBreakIndex;
+  const block = snapshot.content.slice(blockStart, blockEnd);
+  const transformed = block
+    .split("\n")
+    .map((line) => (line.startsWith(prefix) ? line : `${prefix}${line}`))
+    .join("\n");
+
+  await replaceRange(blockStart, blockEnd, transformed, {
+    selectionStartOffset: snapshot.start - blockStart,
+    selectionEndOffset: transformed.length,
+    scrollTop: snapshot.scrollTop,
+  });
+};
+
+const handleTagCreated = (tag) => {
+  if (!tag?.id) {
+    return;
+  }
+
+  const exists = tags.value.some((item) => Number(item.id) === Number(tag.id));
+  if (!exists) {
+    tags.value = [...tags.value, tag];
+  }
+};
+
+const toggleEmojiPicker = () => {
+  isEmojiPickerOpen.value = !isEmojiPickerOpen.value;
+};
+
+const handleEmojiSelect = async (emoji) => {
+  const snapshot = await getSelectionSnapshot();
+
+  await replaceRange(snapshot.start, snapshot.end, emoji, {
+    selectionStartOffset: emoji.length,
+    selectionEndOffset: emoji.length,
+    scrollTop: snapshot.scrollTop,
+  });
+
+  window.requestAnimationFrame(() => {
+    isEmojiPickerOpen.value = false;
+  });
+};
+
+const insertLink = async () => {
+  const snapshot = await getSelectionSnapshot();
+  const selectedText = snapshot.content.slice(snapshot.start, snapshot.end).trim();
+  const text = window.prompt("链接文本", selectedText || "点击这里");
+  if (text === null) {
+    return;
+  }
+
+  const url = window.prompt("链接地址", "https://");
+  if (url === null) {
+    return;
+  }
+
+  const markdown = `[${text || "链接"}](${url || "https://"})`;
+  await replaceRange(snapshot.start, snapshot.end, markdown, {
+    selectionStartOffset: markdown.length,
+    selectionEndOffset: markdown.length,
+    scrollTop: snapshot.scrollTop,
+  });
+};
+
+const handleToolbarAction = async (action) => {
+  isEmojiPickerOpen.value = false;
+
+  switch (action) {
+    case "heading1":
+      await prefixSelectedLines("# ");
+      break;
+    case "heading2":
+      await prefixSelectedLines("## ");
+      break;
+    case "bold":
+      await wrapSelection("**", "**", "加粗文本");
+      break;
+    case "inlineCode":
+      await wrapSelection("`", "`", "代码");
+      break;
+    case "link":
+      await insertLink();
+      break;
+    case "codeBlock":
+      await replaceSelection((selectedText) => {
+        const value = selectedText || "const example = true;";
+        return {
+          text: `\n\`\`\`js\n${value}\n\`\`\`\n`,
+          selectionStartOffset: 7,
+          selectionEndOffset: 7 + value.length,
+        };
+      });
+      break;
+    case "table":
+      await replaceSelection(() => ({
+        text: "\n| 列 1 | 列 2 |\n| --- | --- |\n| 内容 | 内容 |\n",
+        selectionStartOffset: 1,
+        selectionEndOffset: 1,
+      }));
+      break;
+    case "bulletList":
+      await prefixSelectedLines("- ");
+      break;
+    case "orderedList":
+      await prefixSelectedLines("1. ");
+      break;
+    case "taskList":
+      await prefixSelectedLines("- [ ] ");
+      break;
+    case "blockquote":
+      await prefixSelectedLines("> ");
+      break;
+    case "horizontalRule":
+      await replaceSelection(() => ({
+        text: "\n---\n",
+        selectionStartOffset: 5,
+        selectionEndOffset: 5,
+      }));
+      break;
+    default:
+      break;
+  }
+};
+
+const handleToolbarImageUpload = async (file) => {
+  const snapshot = await getSelectionSnapshot();
+  showEditorMessage("图片上传中...");
+
+  try {
+    const media = await uploadMedia(file);
+    const markdown = `![${file.name}](${media.url})`;
+    await replaceRange(snapshot.start, snapshot.end, markdown, {
+      selectionStartOffset: markdown.length,
+      selectionEndOffset: markdown.length,
+      scrollTop: snapshot.scrollTop,
+    });
+    showEditorMessage("图片已插入");
+  } catch (error) {
+    showEditorMessage(error.message || "上传失败");
+  }
+};
 
 const loadOptions = async () => {
   try {
@@ -58,100 +322,106 @@ const loadOptions = async () => {
     ]);
     categories.value = categoryData || [];
     tags.value = tagData || [];
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error(error);
   }
 };
 
 const loadArticle = async () => {
-  if (!isEdit.value) return;
+  if (!isEdit.value) {
+    return;
+  }
+
   try {
     const data = await request(`/api/admin/articles/${route.params.id}`);
     Object.assign(editor, {
-      id: data.id, title: data.title, slug: data.slug, excerpt: data.excerpt, content: data.content,
-      coverImage: data.coverImage, categoryId: data.categoryId, tagIds: (data.tags || []).map((x) => x.id),
-      status: data.status, seoDescription: data.seoDescription, seoKeywords: data.seoKeywords,
+      id: data.id,
+      title: data.title,
+      slug: data.slug,
+      excerpt: data.excerpt,
+      content: data.content,
+      coverImage: data.coverImage,
+      categoryId: data.categoryId,
+      tagIds: (data.tags || []).map((item) => item.id),
+      status: data.status,
+      seoDescription: data.seoDescription,
+      seoKeywords: data.seoKeywords,
     });
-  } catch (err) {
-    alert(err.message || "加载文章失败");
+  } catch (error) {
+    alert(error.message || "加载文章失败");
     router.push("/articles");
   }
 };
 
 const saveArticle = async (status = editor.status) => {
   const normalizeID = (value) => {
-    if (value === null || value === undefined || value === "") return null;
+    if (value === null || value === undefined || value === "") {
+      return null;
+    }
     const parsed = Number(value);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   };
+
   const payload = {
     ...editor,
     id: Number(editor.id) || 0,
     categoryId: normalizeID(editor.categoryId),
-    tagIds: (editor.tagIds || []).map((item) => Number(item)).filter((item) => Number.isFinite(item) && item > 0),
+    tagIds: (editor.tagIds || [])
+      .map((item) => Number(item))
+      .filter((item) => Number.isFinite(item) && item > 0),
     status,
   };
+
   try {
-    const data = await request("/api/admin/articles", { method: "POST", body: JSON.stringify(payload) });
-    Object.assign(editor, {
-      id: data.id, title: data.title, slug: data.slug, excerpt: data.excerpt, content: data.content,
-      coverImage: data.coverImage, categoryId: data.categoryId, tagIds: (data.tags || []).map((x) => x.id),
-      status: data.status, seoDescription: data.seoDescription, seoKeywords: data.seoKeywords,
+    const data = await request("/api/admin/articles", {
+      method: "POST",
+      body: JSON.stringify(payload),
     });
+
+    Object.assign(editor, {
+      id: data.id,
+      title: data.title,
+      slug: data.slug,
+      excerpt: data.excerpt,
+      content: data.content,
+      coverImage: data.coverImage,
+      categoryId: data.categoryId,
+      tagIds: (data.tags || []).map((item) => item.id),
+      status: data.status,
+      seoDescription: data.seoDescription,
+      seoKeywords: data.seoKeywords,
+    });
+
     alert(status === "published" ? "文章已发布" : "草稿已保存");
     if (!isEdit.value) {
       router.replace(`/articles/edit/${data.id}`);
     }
-  } catch (err) {
-    alert(err.message || "保存失败");
+  } catch (error) {
+    alert(error.message || "保存失败");
   }
 };
 
-const insertText = (text) => { editor.content = `${editor.content || ""}\n${text}`; };
-const insertLink = () => {
-  const t = window.prompt("链接文本", "点击这里") || "链接";
-  const u = window.prompt("链接地址", "https://") || "https://";
-  insertText(`[${t}](${u})`);
-};
-const uploadImage = async (event) => {
-  const file = event.target.files?.[0];
-  if (!file) return;
-  const form = new FormData();
-  form.append("file", file);
-  editorMessage.value = "图片上传中...";
-  try {
-    const response = await fetch("/api/admin/media/upload", { method: "POST", credentials: "include", body: form });
-    const data = await response.json();
-    if (data.code !== 0) throw new Error(data.message || "上传失败");
-    insertText(`![${file.name}](${data.data.url})`);
-    editorMessage.value = "图片已插入";
-    setTimeout(() => { editorMessage.value = ""; }, 3000);
-  } catch (err) {
-    editorMessage.value = err.message || "上传失败";
-  } finally {
-    event.target.value = "";
+watch(
+  () => editor.content,
+  (value) => {
+    localStorage.setItem(`draft:${editor.id || "new"}`, value || "");
   }
-};
-
-watch(() => editor.content, (value) => {
-  localStorage.setItem(`draft:${editor.id || "new"}`, value || "");
-});
+);
 
 onMounted(async () => {
   await loadOptions();
   await loadArticle();
-  
+
   if (!isEdit.value) {
     const draft = localStorage.getItem("draft:new");
     if (draft && !editor.content) {
       editor.content = draft;
     }
   }
-  
-  // Responsive: collapse settings on small screens
+
   if (window.innerWidth < 1024) {
     isSettingsOpen.value = false;
-    previewMode.value = "edit"; // Default to edit only on mobile
+    previewMode.value = "edit";
   }
 });
 </script>
@@ -204,38 +474,18 @@ onMounted(async () => {
       <!-- Left: Editor & Preview -->
       <div class="flex-1 flex flex-col bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden min-h-[500px] lg:min-h-0">
         
-        <!-- Editor Toolbar -->
-        <div class="flex items-center justify-between p-2 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 overflow-x-auto shrink-0">
-          <div class="flex items-center gap-1 shrink-0">
-            <button @click="insertText('# ')" class="p-1.5 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded transition-colors" title="H1"><Heading1 class="w-4 h-4" /></button>
-            <button @click="insertText('## ')" class="p-1.5 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded transition-colors" title="H2"><Heading2 class="w-4 h-4" /></button>
-            <div class="w-px h-4 bg-zinc-300 dark:bg-zinc-700 mx-1"></div>
-            <button @click="insertText('**加粗**')" class="p-1.5 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded transition-colors" title="加粗"><Bold class="w-4 h-4" /></button>
-            <button @click="insertText('`代码`')" class="p-1.5 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded transition-colors" title="行内代码"><Code class="w-4 h-4" /></button>
-            <button @click="insertLink" class="p-1.5 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded transition-colors" title="链接"><Link class="w-4 h-4" /></button>
-            <label class="p-1.5 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded transition-colors cursor-pointer" title="上传图片">
-              <ImageIcon class="w-4 h-4" />
-              <input type="file" accept="image/*" class="hidden" @change="uploadImage" />
-            </label>
-            <span v-if="editorMessage" class="ml-2 text-xs text-blue-500">{{ editorMessage }}</span>
-          </div>
+        <div class="relative shrink-0">
+          <MarkdownToolbar
+            v-model:preview-mode="previewMode"
+            :message="editorMessage"
+            :is-emoji-open="isEmojiPickerOpen"
+            @action="handleToolbarAction"
+            @toggle-emoji="toggleEmojiPicker"
+            @upload-image="handleToolbarImageUpload"
+          />
 
-          <div class="flex items-center gap-1 bg-zinc-200 dark:bg-zinc-700/50 p-1 rounded-lg shrink-0 ml-4">
-            <button 
-              @click="previewMode='edit'" 
-              :class="['p-1.5 rounded-md transition-colors', previewMode==='edit' ? 'bg-white dark:bg-zinc-600 text-zinc-900 dark:text-zinc-100 shadow-sm' : 'text-zinc-500 dark:text-zinc-400']"
-              title="仅编辑"
-            ><PenLine class="w-4 h-4" /></button>
-            <button 
-              @click="previewMode='split'" 
-              :class="['p-1.5 rounded-md transition-colors hidden sm:block', previewMode==='split' ? 'bg-white dark:bg-zinc-600 text-zinc-900 dark:text-zinc-100 shadow-sm' : 'text-zinc-500 dark:text-zinc-400']"
-              title="分屏"
-            ><Columns class="w-4 h-4" /></button>
-            <button 
-              @click="previewMode='preview'" 
-              :class="['p-1.5 rounded-md transition-colors', previewMode==='preview' ? 'bg-white dark:bg-zinc-600 text-zinc-900 dark:text-zinc-100 shadow-sm' : 'text-zinc-500 dark:text-zinc-400']"
-              title="仅预览"
-            ><Eye class="w-4 h-4" /></button>
+          <div v-if="isEmojiPickerOpen" class="absolute left-2 top-full z-20 mt-2">
+            <EmojiPicker @select="handleEmojiSelect" />
           </div>
         </div>
 
@@ -243,10 +493,15 @@ onMounted(async () => {
         <div class="flex-1 flex overflow-hidden min-h-0">
           <textarea 
             v-if="previewMode!=='preview'" 
+            ref="editorTextarea"
             v-model="editor.content" 
             class="flex-1 p-4 w-full h-full resize-none outline-none bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-mono text-sm leading-relaxed"
             :class="{'border-r border-zinc-200 dark:border-zinc-800': previewMode==='split'}"
             placeholder="在此输入 Markdown 内容..."
+            @click="syncEditorSelection"
+            @focus="syncEditorSelection"
+            @keyup="syncEditorSelection"
+            @select="syncEditorSelection"
           ></textarea>
           
           <div 
@@ -313,24 +568,11 @@ onMounted(async () => {
             
             <div>
               <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">标签</label>
-              <select 
-                v-model="editor.tagIds" 
-                multiple 
-                class="block w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-colors min-h-[100px]"
-              >
-                <option v-for="item in tags" :key="item.id" :value="item.id">{{ item.name }}</option>
-              </select>
-              <p class="text-xs text-zinc-500 mt-1">按住 Ctrl/Cmd 多选</p>
+              <TagSelector v-model="editor.tagIds" :options="tags" @tag-created="handleTagCreated" />
             </div>
             
             <div>
-              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">封面图 URL</label>
-              <input 
-                v-model="editor.coverImage" 
-                class="block w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-colors" 
-                placeholder="https://" 
-              />
-              <img v-if="editor.coverImage" :src="editor.coverImage" class="mt-2 w-full h-24 object-cover rounded-lg border border-zinc-200 dark:border-zinc-700" />
+              <CoverUploadField v-model="editor.coverImage" />
             </div>
 
             <div>
