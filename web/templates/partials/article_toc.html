@@ -1,0 +1,17 @@
+{{define "article_toc"}}
+{{if .Headings}}
+<aside class="article-toc" data-toc>
+  <button class="article-toc__toggle" type="button" data-toc-toggle>目录</button>
+  <h3>On This Page</h3>
+  <div class="toc-list">
+    {{range .Headings}}
+      {{if and .ID (le .Level 3)}}
+      <div data-toc-item data-level="{{.Level}}">
+        <a href="#{{.ID}}">{{.Text}}</a>
+      </div>
+      {{end}}
+    {{end}}
+  </div>
+</aside>
+{{end}}
+{{end}}

@@ -1,4 +1,23 @@
 {{define "archives"}}{{template "base" .}}{{end}}
 {{define "content"}}
-<section class="container" style="padding: 40px 0 48px;"><div class="card"><h1>归档</h1><div class="chip-list">{{range .Archives}}<span class="chip">{{.Year}}-{{.Month}} · {{.Count}} 篇</span>{{end}}</div></div></section>
+<section class="container page-shell">
+  <div class="page-panel">
+    <span class="eyebrow">Archive Timeline</span>
+    <h1 class="page-heading">归档</h1>
+    <p class="page-description">按月回看写作节奏，保持和首页一致的技术信息架构。</p>
+  </div>
+
+  <div class="archive-list">
+    <h2>Monthly Buckets</h2>
+    <div class="archive-timeline">
+      {{range .Archives}}
+      <a class="archive-item" href="/archives">
+        <time>{{.Year}}-{{printf "%02d" .Month}}</time>
+        <strong>{{.Count}} 篇</strong>
+        <span>published entries</span>
+      </a>
+      {{end}}
+    </div>
+  </div>
+</section>
 {{end}}

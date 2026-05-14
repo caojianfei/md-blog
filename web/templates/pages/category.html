@@ -1,4 +1,24 @@
 {{define "category"}}{{template "base" .}}{{end}}
 {{define "content"}}
-<section class="container" style="padding: 40px 0 48px;"><div class="card"><h1>分类：{{.CurrentCategory.Name}}</h1><p class="muted">{{.CurrentCategory.Description}}</p></div>{{if .Articles}}{{range .Articles}}{{template "article_card" .}}{{end}}{{else}}<div class="card empty">当前分类下暂无文章。</div>{{end}}</section>
+<section class="container page-shell">
+  <div class="page-panel">
+    <span class="eyebrow">Category Context</span>
+    <h1 class="page-heading">{{.CurrentCategory.Name}}</h1>
+    <p class="page-description">{{.CurrentCategory.Description}}</p>
+  </div>
+
+  {{if .Articles}}
+  <div class="article-list">
+    {{range .Articles}}{{template "article_card" .}}{{end}}
+  </div>
+  {{else}}
+  <div class="empty-state">当前分类下暂无文章。</div>
+  {{end}}
+
+  <div class="pagination">
+    {{if gt .CurrentPage 1}}<a href="/categories/{{pathEscape .CurrentCategory.Slug}}?page={{dec .CurrentPage}}">上一页</a>{{end}}
+    <span>第 {{.CurrentPage}} / {{.TotalPages}} 页</span>
+    {{if lt .CurrentPage .TotalPages}}<a href="/categories/{{pathEscape .CurrentCategory.Slug}}?page={{inc .CurrentPage}}">下一页</a>{{end}}
+  </div>
+</section>
 {{end}}

@@ -9,6 +9,7 @@ import (
 	appcontainer "github.com/cybernote/md-blog/internal/container"
 	"github.com/cybernote/md-blog/internal/model"
 	"github.com/cybernote/md-blog/internal/repository"
+	markdownSvc "github.com/cybernote/md-blog/internal/service/markdown"
 	seoSvc "github.com/cybernote/md-blog/internal/service/seo"
 	"github.com/go-chi/chi/v5"
 )
@@ -22,17 +23,21 @@ type PageData struct {
 	Meta            seoSvc.Meta
 	Articles        []model.Article
 	Article         *model.Article
+	Headings        []markdownSvc.Heading
 	Categories      []model.Category
 	Tags            []model.Tag
 	Archives        []repository.ArchiveItem
 	CurrentPage     int
 	TotalPages      int
+	Path            string
 	Query           string
 	CurrentTag      *model.Tag
 	CurrentCategory *model.Category
 	PrevArticle     *model.Article
 	NextArticle     *model.Article
 	AboutHTML       string
+	PublishedCount  int64
+	ArchiveCount    int
 }
 
 func New(c *appcontainer.Container) *Handler { return &Handler{c: c} }
@@ -58,6 +63,10 @@ func (h *Handler) Article(w http.ResponseWriter, r *http.Request) {
 	data.Article = article
 	data.PrevArticle = prev
 	data.NextArticle = next
+	if rendered, renderErr := h.c.Markdown.Render(article.Content); renderErr == nil {
+		data.Article.HTMLContent = rendered.HTML
+		data.Headings = rendered.Headings
+	}
 	h.c.Renderer.Render(w, "article", data, 0)
 }
 
@@ -109,13 +118,21 @@ func (h *Handler) Archives(w http.ResponseWriter, r *http.Request) {
 	archives, _ := h.c.Article.Archives()
 	data := h.baseData("归档", r.URL.Path, "文章归档", "归档")
 	data.Archives = archives
+	data.ArchiveCount = len(archives)
 	h.c.Renderer.Render(w, "archives", data, 0)
 }
 
 func (h *Handler) About(w http.ResponseWriter, r *http.Request) {
 	data := h.baseData("关于", r.URL.Path, "关于本站", "关于")
 	rendered, _ := h.c.Markdown.Render(data.Site.AboutContent)
-	data.AboutHTML = rendered.HTML
+	if rendered != nil {
+		data.AboutHTML = rendered.HTML
+	}
+	archives, _ := h.c.Article.Archives()
+	_, total, _ := h.c.Article.List(repository.ArticleFilter{OnlyPublic: true, Page: 1, PageSize: 1})
+	data.Archives = archives
+	data.ArchiveCount = len(archives)
+	data.PublishedCount = total
 	h.c.Renderer.Render(w, "about", data, 0)
 }
 
@@ -178,7 +195,16 @@ func (h *Handler) baseData(title, path, description, keywords string) PageData {
 	site, _ := h.c.SettingRepo.Get()
 	categories, _ := h.c.CategoryRepo.List()
 	tags, _ := h.c.TagRepo.List()
-	return PageData{Site: site, Categories: categories, Tags: tags, Meta: h.c.SEO.Build(title, description, keywords, path)}
+	archives, _ := h.c.Article.Archives()
+	return PageData{
+		Site:         site,
+		Categories:   categories,
+		Tags:         tags,
+		Archives:     archives,
+		ArchiveCount: len(archives),
+		Path:         path,
+		Meta:         h.c.SEO.Build(title, description, keywords, path),
+	}
 }
 
 func parsePage(r *http.Request) int {
