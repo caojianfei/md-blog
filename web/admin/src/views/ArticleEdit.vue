@@ -1,12 +1,10 @@
 <script setup>
 import { computed, nextTick, onMounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import MarkdownIt from "markdown-it";
-import hljs from "highlight.js";
-import "highlight.js/styles/github-dark.css";
 import { ArrowLeft, ChevronDown, ChevronUp, Save, Send } from "lucide-vue-next";
 import CoverUploadField from "../components/CoverUploadField.vue";
 import EmojiPicker from "../components/EmojiPicker.vue";
+import MarkdownPreview from "../components/MarkdownPreview.vue";
 import MarkdownToolbar from "../components/MarkdownToolbar.vue";
 import TagSelector from "../components/TagSelector.vue";
 import { request } from "../utils/request";
@@ -14,17 +12,6 @@ import { uploadMedia } from "../utils/media";
 
 const route = useRoute();
 const router = useRouter();
-
-const md = new MarkdownIt({
-  html: false,
-  linkify: true,
-  highlight(str, lang) {
-    if (lang && hljs.getLanguage(lang)) {
-      return `<pre><code class="hljs">${hljs.highlight(str, { language: lang }).value}</code></pre>`;
-    }
-    return `<pre><code class="hljs">${md.utils.escapeHtml(str)}</code></pre>`;
-  },
-});
 
 const editor = reactive({
   id: 0,
@@ -53,7 +40,6 @@ const editorSelection = reactive({
 });
 
 const isEdit = computed(() => !!route.params.id);
-const previewHtml = computed(() => md.render(editor.content || ""));
 const editorWords = computed(() => (editor.content || "").trim().split(/\s+/).filter(Boolean).length);
 
 const showEditorMessage = (message) => {
@@ -472,7 +458,7 @@ onMounted(async () => {
     <div class="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
       
       <!-- Left: Editor & Preview -->
-      <div class="flex-1 flex flex-col bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden min-h-[500px] lg:min-h-0">
+      <div class="flex-1 min-w-0 flex flex-col bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden min-h-[500px] lg:min-h-0">
         
         <div class="relative shrink-0">
           <MarkdownToolbar
@@ -495,7 +481,7 @@ onMounted(async () => {
             v-if="previewMode!=='preview'" 
             ref="editorTextarea"
             v-model="editor.content" 
-            class="flex-1 p-4 w-full h-full resize-none outline-none bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-mono text-sm leading-relaxed"
+            class="min-w-0 basis-0 flex-1 p-4 w-full h-full resize-none outline-none bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-mono text-sm leading-relaxed"
             :class="{'border-r border-zinc-200 dark:border-zinc-800': previewMode==='split'}"
             placeholder="在此输入 Markdown 内容..."
             @click="syncEditorSelection"
@@ -504,11 +490,11 @@ onMounted(async () => {
             @select="syncEditorSelection"
           ></textarea>
           
-          <div 
-            v-if="previewMode!=='edit'" 
-            class="flex-1 p-6 w-full h-full overflow-y-auto bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 prose dark:prose-invert max-w-none" 
-            v-html="previewHtml"
-          ></div>
+          <MarkdownPreview
+            v-if="previewMode !== 'edit'"
+            :content="editor.content"
+            class="min-w-0 basis-0 flex-1 w-full h-full"
+          />
         </div>
         
         <!-- Status Bar -->
@@ -519,7 +505,7 @@ onMounted(async () => {
       </div>
 
       <!-- Right: Meta Settings -->
-      <div class="lg:w-80 flex flex-col gap-4 shrink-0">
+      <div class="lg:w-72 xl:w-80 flex flex-col gap-4 shrink-0">
         <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col min-h-0">
           
           <!-- Accordion Header for Mobile -->
@@ -609,77 +595,3 @@ onMounted(async () => {
     </div>
   </div>
 </template>
-
-<style>
-/* Prose styles for markdown preview */
-.prose pre {
-  margin: 1em 0;
-  padding: 1em;
-  border-radius: 0.5rem;
-  overflow-x: auto;
-  background-color: #0d1117;
-}
-.prose code {
-  font-family: var(--font-mono);
-  font-size: 0.875em;
-}
-.prose :not(pre) > code {
-  padding: 0.2em 0.4em;
-  background-color: rgba(128, 128, 128, 0.15);
-  border-radius: 0.25rem;
-}
-.prose img {
-  max-width: 100%;
-  height: auto;
-  border-radius: 0.5rem;
-}
-.prose a {
-  color: #2563eb;
-  text-decoration: none;
-}
-.prose a:hover {
-  text-decoration: underline;
-}
-.prose blockquote {
-  border-left: 4px solid #e5e7eb;
-  padding-left: 1em;
-  color: #6b7280;
-  margin: 1em 0;
-}
-.prose table {
-  width: 100%;
-  margin: 1.5em 0;
-  border-collapse: collapse;
-  font-size: 0.95em;
-}
-.prose thead {
-  background-color: #f4f4f5;
-}
-.prose th,
-.prose td {
-  padding: 0.75rem 0.875rem;
-  border: 1px solid #e4e4e7;
-  text-align: left;
-  vertical-align: top;
-}
-.prose th {
-  font-weight: 600;
-}
-.prose tbody tr:nth-child(even) {
-  background-color: #fafafa;
-}
-.dark .prose blockquote {
-  border-left-color: #374151;
-  color: #9ca3af;
-}
-.dark .prose thead {
-  background-color: #27272a;
-}
-.dark .prose th,
-.dark .prose td {
-  border-color: #3f3f46;
-}
-.dark .prose tbody tr:nth-child(even) {
-  background-color: #18181b;
-}
-</style>
