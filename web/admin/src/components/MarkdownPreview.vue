@@ -58,7 +58,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="h-full min-w-0 overflow-y-auto bg-white p-6 dark:bg-zinc-900">
+  <div class="h-full min-w-0 overflow-y-auto bg-white px-4 py-4 dark:bg-zinc-900 md:px-5 md:py-5 xl:px-6">
     <MdPreview
       class="markdown-preview"
       language="zh-CN"

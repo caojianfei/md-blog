@@ -21,6 +21,7 @@ const route = useRoute();
 const userStore = useUserStore();
 
 const isMobileMenuOpen = ref(false);
+const layoutMode = computed(() => route.meta?.layout || "default");
 
 const menus = [
   { key: "dashboard", label: "工作台", path: "/", icon: LayoutDashboard },
@@ -154,8 +155,15 @@ onMounted(async () => {
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 flex flex-col min-w-0 h-[calc(100vh-60px)] md:h-screen overflow-y-auto">
-      <div class="p-4 md:p-8 flex-1 w-full max-w-7xl mx-auto">
+    <main class="flex-1 flex flex-col min-w-0 h-[calc(100vh-60px)] md:h-screen overflow-y-auto bg-zinc-100/70 dark:bg-zinc-950">
+      <div
+        :class="[
+          'flex-1 w-full min-w-0',
+          layoutMode === 'editor'
+            ? 'p-3 md:p-4 xl:p-5 2xl:p-6'
+            : 'p-4 md:p-6 xl:p-8 2xl:p-10'
+        ]"
+      >
         <router-view v-slot="{ Component }">
           <transition name="fade" mode="out-in">
             <component :is="Component" />

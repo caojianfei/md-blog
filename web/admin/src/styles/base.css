@@ -10,10 +10,17 @@
 @layer base {
   body {
     @apply bg-zinc-50 text-zinc-900 antialiased;
+    scrollbar-gutter: stable;
   }
   
   :root[data-theme="dark"] body {
     @apply bg-zinc-950 text-zinc-50;
+  }
+}
+
+@layer utilities {
+  .admin-workspace-shell {
+    min-height: calc(100vh - 9rem);
   }
 }
 
@@ -22,4 +29,3 @@
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 .modal-enter-active, .modal-leave-active { transition: all 0.2s ease; }
 .modal-enter-from, .modal-leave-to { opacity: 0; transform: scale(0.95); }
-

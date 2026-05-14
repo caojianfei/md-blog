@@ -39,7 +39,7 @@ onMounted(loadSettings);
 </script>
 
 <template>
-  <div class="space-y-6 max-w-4xl mx-auto">
+  <div class="mx-auto max-w-6xl space-y-6">
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">站点设置</h1>
       <button 
@@ -55,13 +55,13 @@ onMounted(loadSettings);
     <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
       
       <!-- Basic Settings -->
-      <div class="p-6 border-b border-zinc-200 dark:border-zinc-800">
+      <div class="border-b border-zinc-200 p-6 dark:border-zinc-800 xl:p-8">
         <div class="flex items-center gap-2 mb-6">
           <Settings class="w-5 h-5 text-blue-500" />
           <h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">基本信息</h2>
         </div>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
           <div>
             <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">站点名称</label>
             <input 
@@ -78,32 +78,32 @@ onMounted(loadSettings);
               placeholder="例如: 记录生活，分享知识" 
             />
           </div>
+          <div class="md:col-span-2 xl:col-span-1">
+            <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">搜索占位文案</label>
+            <input 
+              v-model="settings.searchPlaceholder" 
+              class="block w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-colors" 
+              placeholder="例如: 搜索文章..." 
+            />
+          </div>
         </div>
       </div>
 
       <!-- SEO Settings -->
-      <div class="p-6 border-b border-zinc-200 dark:border-zinc-800">
+      <div class="border-b border-zinc-200 p-6 dark:border-zinc-800 xl:p-8">
         <div class="flex items-center gap-2 mb-6">
           <Info class="w-5 h-5 text-emerald-500" />
           <h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">SEO 设置</h2>
         </div>
         
         <div class="space-y-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
             <div>
               <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">站点关键词</label>
               <input 
                 v-model="settings.siteKeywords" 
                 class="block w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-colors" 
                 placeholder="例如: 博客, 技术, 编程" 
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">搜索占位文案</label>
-              <input 
-                v-model="settings.searchPlaceholder" 
-                class="block w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-colors" 
-                placeholder="例如: 搜索文章..." 
               />
             </div>
           </div>
@@ -120,7 +120,7 @@ onMounted(loadSettings);
       </div>
 
       <!-- About Page -->
-      <div class="p-6">
+      <div class="p-6 xl:p-8">
         <div class="flex items-center gap-2 mb-6">
           <FileText class="w-5 h-5 text-purple-500" />
           <h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">关于页内容</h2>
@@ -130,8 +130,8 @@ onMounted(loadSettings);
           <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Markdown 支持</label>
           <textarea 
             v-model="settings.aboutContent" 
-            rows="10" 
-            class="block w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-mono text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-colors resize-y min-h-[200px]" 
+              rows="12" 
+              class="block w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-mono text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-colors resize-y min-h-[280px]" 
             placeholder="编写关于页面的内容..."
           ></textarea>
         </div>

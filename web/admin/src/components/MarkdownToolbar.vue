@@ -24,6 +24,10 @@ defineProps({
     type: String,
     required: true,
   },
+  canSplit: {
+    type: Boolean,
+    default: true,
+  },
   message: {
     type: String,
     default: "",
@@ -61,8 +65,8 @@ const imageInput = (event) => {
 </script>
 
 <template>
-  <div class="flex items-center justify-between gap-3 border-b border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-800 dark:bg-zinc-800/50">
-    <div class="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+  <div class="flex flex-col gap-2 border-b border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-800 dark:bg-zinc-800/50 lg:flex-row lg:items-center lg:justify-between">
+    <div class="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto pb-1 lg:pb-0">
       <button
         v-for="tool in tools"
         :key="tool.key"
@@ -99,7 +103,7 @@ const imageInput = (event) => {
       <span v-if="message" class="ml-2 shrink-0 text-xs text-blue-500">{{ message }}</span>
     </div>
 
-    <div class="ml-2 flex shrink-0 items-center gap-1 rounded-lg bg-zinc-200 p-1 dark:bg-zinc-700/50">
+    <div class="flex shrink-0 items-center gap-1 self-end rounded-lg bg-zinc-200 p-1 dark:bg-zinc-700/50 lg:self-auto">
       <button
         type="button"
         title="仅编辑"
@@ -114,10 +118,11 @@ const imageInput = (event) => {
         <PenLine class="h-4 w-4" />
       </button>
       <button
+        v-if="canSplit"
         type="button"
         title="分屏"
         :class="[
-          'hidden rounded-md p-1.5 transition-colors sm:block',
+          'rounded-md p-1.5 transition-colors',
           previewMode === 'split'
             ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-600 dark:text-zinc-100'
             : 'text-zinc-500 dark:text-zinc-400',

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, reactive, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ArrowLeft, ChevronDown, ChevronUp, Save, Send } from "lucide-vue-next";
 import CoverUploadField from "../components/CoverUploadField.vue";
@@ -12,6 +12,8 @@ import { uploadMedia } from "../utils/media";
 
 const route = useRoute();
 const router = useRouter();
+const TABLET_BREAKPOINT = 1024;
+const DESKTOP_SPLIT_BREAKPOINT = 1280;
 
 const editor = reactive({
   id: 0,
@@ -29,11 +31,12 @@ const editor = reactive({
 
 const categories = ref([]);
 const tags = ref([]);
-const previewMode = ref("split");
+const previewMode = ref("edit");
 const editorMessage = ref("");
 const isSettingsOpen = ref(true);
 const isEmojiPickerOpen = ref(false);
 const editorTextarea = ref(null);
+const viewportWidth = ref(0);
 const editorSelection = reactive({
   start: 0,
   end: 0,
@@ -41,6 +44,43 @@ const editorSelection = reactive({
 
 const isEdit = computed(() => !!route.params.id);
 const editorWords = computed(() => (editor.content || "").trim().split(/\s+/).filter(Boolean).length);
+const editorHeading = computed(() => (isEdit.value ? "编辑文章" : "新建文章"));
+const statusLabel = computed(() => (editor.status === "published" ? "已发布" : "草稿"));
+const canUseSplitMode = computed(() => viewportWidth.value >= TABLET_BREAKPOINT);
+const showSettingsContent = computed(() => canUseSplitMode.value || isSettingsOpen.value);
+const previewModeLabel = computed(() => {
+  if (previewMode.value === "split") {
+    return "分屏预览";
+  }
+  if (previewMode.value === "preview") {
+    return "仅预览";
+  }
+  return "仅编辑";
+});
+
+const getDefaultPreviewMode = (width) =>
+  width >= DESKTOP_SPLIT_BREAKPOINT ? "split" : "edit";
+
+const syncResponsiveEditorState = (forceDefault = false) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const width = window.innerWidth;
+  viewportWidth.value = width;
+
+  if (forceDefault) {
+    previewMode.value = getDefaultPreviewMode(width);
+  } else if (width < TABLET_BREAKPOINT && previewMode.value === "split") {
+    previewMode.value = "edit";
+  }
+
+  isSettingsOpen.value = width >= TABLET_BREAKPOINT;
+};
+
+const handleWindowResize = () => {
+  syncResponsiveEditorState();
+};
 
 const showEditorMessage = (message) => {
   editorMessage.value = message;
@@ -65,7 +105,7 @@ const syncEditorSelection = () => {
 
 const ensureEditorVisible = async () => {
   if (previewMode.value === "preview") {
-    previewMode.value = window.innerWidth < 640 ? "edit" : "split";
+    previewMode.value = canUseSplitMode.value ? "split" : "edit";
     await nextTick();
   }
   return editorTextarea.value;
@@ -395,6 +435,8 @@ watch(
 );
 
 onMounted(async () => {
+  syncResponsiveEditorState(true);
+  window.addEventListener("resize", handleWindowResize);
   await loadOptions();
   await loadArticle();
 
@@ -404,194 +446,205 @@ onMounted(async () => {
       editor.content = draft;
     }
   }
+});
 
-  if (window.innerWidth < 1024) {
-    isSettingsOpen.value = false;
-    previewMode.value = "edit";
-  }
+onUnmounted(() => {
+  window.removeEventListener("resize", handleWindowResize);
 });
 </script>
 
 <template>
-  <div class="h-full flex flex-col gap-4">
-    <!-- Header Actions -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm shrink-0">
-      <div class="flex items-center gap-3">
-        <button 
+  <div class="admin-workspace-shell h-full min-h-0 flex flex-col gap-4">
+    <div class="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 md:px-5 xl:flex-row xl:items-center xl:justify-between">
+      <div class="flex min-w-0 items-center gap-3">
+        <button
           @click="router.push('/articles')"
-          class="p-2 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+          class="shrink-0 rounded-lg p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
           title="返回"
         >
-          <ArrowLeft class="w-5 h-5" />
+          <ArrowLeft class="h-5 w-5" />
         </button>
-        <h1 class="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 truncate max-w-[200px] sm:max-w-md">
-          {{ isEdit ? '编辑文章' : '新建文章' }}
-        </h1>
-        <span 
-          v-if="editor.status"
-          class="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-          :class="editor.status === 'published' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-amber-100 text-amber-800 dark:bg-amber-500/10 dark:text-amber-400'"
-        >
-          {{ editor.status === 'published' ? '已发布' : '草稿' }}
-        </span>
+        <div class="min-w-0">
+          <div class="flex min-w-0 flex-wrap items-center gap-2">
+            <h1 class="truncate text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+              {{ editorHeading }}
+            </h1>
+            <span
+              class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+              :class="editor.status === 'published' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-amber-100 text-amber-800 dark:bg-amber-500/10 dark:text-amber-400'"
+            >
+              {{ statusLabel }}
+            </span>
+          </div>
+          <p class="mt-1 hidden text-sm text-zinc-500 dark:text-zinc-400 md:block">
+            桌面端强化双栏工作区，正文编辑、预览与文章设置分层呈现。
+          </p>
+        </div>
       </div>
-      
-      <div class="flex items-center gap-2 w-full sm:w-auto">
-        <button 
+
+      <div class="flex items-center gap-2 sm:w-auto">
+        <button
           @click="saveArticle('draft')"
-          class="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-200 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors"
+          class="inline-flex flex-1 items-center justify-center rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700 sm:flex-none"
         >
-          <Save class="w-4 h-4 mr-2" />
+          <Save class="mr-2 h-4 w-4" />
           保存草稿
         </button>
-        <button 
+        <button
           @click="saveArticle('published')"
-          class="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
+          class="inline-flex flex-1 items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 sm:flex-none"
         >
-          <Send class="w-4 h-4 mr-2" />
+          <Send class="mr-2 h-4 w-4" />
           发布
         </button>
       </div>
     </div>
 
-    <!-- Main Workspace -->
-    <div class="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
-      
-      <!-- Left: Editor & Preview -->
-      <div class="flex-1 min-w-0 flex flex-col bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden min-h-[500px] lg:min-h-0">
-        
-        <div class="relative shrink-0">
-          <MarkdownToolbar
-            v-model:preview-mode="previewMode"
-            :message="editorMessage"
-            :is-emoji-open="isEmojiPickerOpen"
-            @action="handleToolbarAction"
-            @toggle-emoji="toggleEmojiPicker"
-            @upload-image="handleToolbarImageUpload"
-          />
-
-          <div v-if="isEmojiPickerOpen" class="absolute left-2 top-full z-20 mt-2">
-            <EmojiPicker @select="handleEmojiSelect" />
+    <div class="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_23rem]">
+      <section class="flex min-h-0 flex-col gap-4">
+        <div class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 md:p-5">
+          <div class="min-w-0">
+            <label class="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              标题 <span class="text-red-500">*</span>
+            </label>
+            <input
+              v-model="editor.title"
+              class="block w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 md:text-lg"
+              placeholder="输入文章标题"
+            />
           </div>
         </div>
 
-        <!-- Editor Area -->
-        <div class="flex-1 flex overflow-hidden min-h-0">
-          <textarea 
-            v-if="previewMode!=='preview'" 
-            ref="editorTextarea"
-            v-model="editor.content" 
-            class="min-w-0 basis-0 flex-1 p-4 w-full h-full resize-none outline-none bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-mono text-sm leading-relaxed"
-            :class="{'border-r border-zinc-200 dark:border-zinc-800': previewMode==='split'}"
-            placeholder="在此输入 Markdown 内容..."
-            @click="syncEditorSelection"
-            @focus="syncEditorSelection"
-            @keyup="syncEditorSelection"
-            @select="syncEditorSelection"
-          ></textarea>
-          
-          <MarkdownPreview
-            v-if="previewMode !== 'edit'"
-            :content="editor.content"
-            class="min-w-0 basis-0 flex-1 w-full h-full"
-          />
-        </div>
-        
-        <!-- Status Bar -->
-        <div class="p-2 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 text-xs text-zinc-500 dark:text-zinc-400 flex justify-between shrink-0">
-          <span>Markdown 支持</span>
-          <span>共 {{ editorWords }} 字</span>
-        </div>
-      </div>
+        <div class="flex min-h-[520px] flex-1 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div class="relative shrink-0">
+            <MarkdownToolbar
+              v-model:preview-mode="previewMode"
+              :can-split="canUseSplitMode"
+              :message="editorMessage"
+              :is-emoji-open="isEmojiPickerOpen"
+              @action="handleToolbarAction"
+              @toggle-emoji="toggleEmojiPicker"
+              @upload-image="handleToolbarImageUpload"
+            />
 
-      <!-- Right: Meta Settings -->
-      <div class="lg:w-72 xl:w-80 flex flex-col gap-4 shrink-0">
-        <div class="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col min-h-0">
-          
-          <!-- Accordion Header for Mobile -->
-          <button 
-            @click="isSettingsOpen = !isSettingsOpen" 
-            class="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-800 text-sm font-semibold text-zinc-900 dark:text-zinc-100 shrink-0"
-          >
-            <span>文章设置</span>
-            <ChevronUp v-if="isSettingsOpen" class="w-4 h-4 lg:hidden" />
-            <ChevronDown v-else class="w-4 h-4 lg:hidden" />
-          </button>
-          
-          <!-- Settings Content -->
-          <div 
-            v-show="isSettingsOpen" 
-            class="p-4 space-y-4 overflow-y-auto flex-1"
-          >
-            <div>
-              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">标题 <span class="text-red-500">*</span></label>
-              <input 
-                v-model="editor.title" 
-                class="block w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-colors" 
-                placeholder="输入文章标题" 
-              />
+            <div v-if="isEmojiPickerOpen" class="absolute left-2 top-full z-20 mt-2">
+              <EmojiPicker @select="handleEmojiSelect" />
             </div>
-            
-            <div>
-              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">自定义 Slug</label>
-              <input 
-                v-model="editor.slug" 
-                class="block w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-colors" 
-                placeholder="例如: my-first-post" 
-              />
-            </div>
-            
-            <div>
-              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">分类</label>
-              <select 
-                v-model="editor.categoryId" 
-                class="block w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-colors"
-              >
-                <option :value="null">选择分类</option>
-                <option v-for="item in categories" :key="item.id" :value="item.id">{{ item.name }}</option>
-              </select>
-            </div>
-            
-            <div>
-              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">标签</label>
-              <TagSelector v-model="editor.tagIds" :options="tags" @tag-created="handleTagCreated" />
-            </div>
-            
-            <div>
-              <CoverUploadField v-model="editor.coverImage" />
-            </div>
+          </div>
 
-            <div>
-              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">摘要</label>
-              <textarea 
-                v-model="editor.excerpt" 
-                rows="3" 
-                class="block w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-colors resize-none" 
-                placeholder="列表展示简介"
+          <div
+            :class="[
+              'min-h-0 flex-1 overflow-hidden',
+              previewMode === 'split' ? 'lg:grid lg:grid-cols-2' : 'flex'
+            ]"
+          >
+            <div
+              v-if="previewMode !== 'preview'"
+              class="min-h-0 min-w-0 flex-1"
+              :class="previewMode === 'split' ? 'border-b border-zinc-200 dark:border-zinc-800 lg:border-b-0 lg:border-r' : ''"
+            >
+              <textarea
+                ref="editorTextarea"
+                v-model="editor.content"
+                class="h-full min-h-0 w-full resize-none bg-white px-4 py-4 font-mono text-sm leading-relaxed text-zinc-900 outline-none dark:bg-zinc-900 dark:text-zinc-100 md:px-5"
+                placeholder="在此输入 Markdown 内容..."
+                @click="syncEditorSelection"
+                @focus="syncEditorSelection"
+                @keyup="syncEditorSelection"
+                @select="syncEditorSelection"
               ></textarea>
             </div>
 
-            <div>
-              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">SEO 关键词</label>
-              <input 
-                v-model="editor.seoKeywords" 
-                class="block w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-colors" 
-                placeholder="逗号分隔" 
-              />
-            </div>
-            
-            <div>
-              <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">SEO 描述</label>
-              <textarea 
-                v-model="editor.seoDescription" 
-                rows="2" 
-                class="block w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-colors resize-none" 
-              ></textarea>
+            <MarkdownPreview
+              v-if="previewMode !== 'edit'"
+              :content="editor.content"
+              class="min-h-0 min-w-0 flex-1"
+            />
+          </div>
+
+          <div class="flex shrink-0 items-center justify-between border-t border-zinc-200 bg-zinc-50 px-4 py-2 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-400">
+            <span>{{ previewModeLabel }}</span>
+            <span>共 {{ editorWords }} 字</span>
+          </div>
+        </div>
+      </section>
+
+      <aside class="min-h-0">
+        <div class="flex min-h-0 flex-col gap-4 lg:sticky lg:top-4">
+          <div class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:max-h-[calc(100vh-2rem)]">
+            <button
+              @click="isSettingsOpen = !isSettingsOpen"
+              class="flex w-full items-center justify-between border-b border-zinc-200 bg-zinc-50 p-4 text-left text-sm font-semibold text-zinc-900 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-100"
+            >
+              <span>文章设置</span>
+              <span class="text-xs font-normal text-zinc-500 dark:text-zinc-400 lg:hidden">
+                {{ showSettingsContent ? "收起" : "展开" }}
+              </span>
+              <ChevronUp v-if="showSettingsContent" class="h-4 w-4 lg:hidden" />
+              <ChevronDown v-else class="h-4 w-4 lg:hidden" />
+            </button>
+
+            <div v-show="showSettingsContent" class="space-y-4 overflow-y-auto p-4 lg:max-h-[calc(100vh-5.5rem)]">
+              <div>
+                <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">分类</label>
+                <select
+                  v-model="editor.categoryId"
+                  class="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                >
+                  <option :value="null">选择分类</option>
+                  <option v-for="item in categories" :key="item.id" :value="item.id">{{ item.name }}</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">标签</label>
+                <TagSelector v-model="editor.tagIds" :options="tags" @tag-created="handleTagCreated" />
+              </div>
+
+              <div>
+                <CoverUploadField v-model="editor.coverImage" />
+              </div>
+
+              <div>
+                <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">摘要</label>
+                <textarea
+                  v-model="editor.excerpt"
+                  rows="3"
+                  class="block w-full resize-none rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                  placeholder="列表展示简介"
+                ></textarea>
+              </div>
+
+              <div>
+                <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">自定义 Slug</label>
+                <input
+                  v-model="editor.slug"
+                  class="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                  placeholder="例如: my-first-post"
+                />
+              </div>
+
+              <div>
+                <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">SEO 关键词</label>
+                <input
+                  v-model="editor.seoKeywords"
+                  class="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                  placeholder="逗号分隔"
+                />
+              </div>
+
+              <div>
+                <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">SEO 描述</label>
+                <textarea
+                  v-model="editor.seoDescription"
+                  rows="3"
+                  class="block w-full resize-none rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                ></textarea>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      
+      </aside>
     </div>
   </div>
 </template>

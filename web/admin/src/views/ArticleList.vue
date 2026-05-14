@@ -69,10 +69,10 @@ onMounted(loadAll);
 </script>
 
 <template>
-  <div class="space-y-6">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div class="space-y-5">
+    <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
       <h1 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">文章管理</h1>
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 self-start xl:self-auto">
         <button 
           @click="loadAll" 
           class="inline-flex items-center justify-center p-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
@@ -100,8 +100,8 @@ onMounted(loadAll);
           </button>
         </div>
         
-        <div :class="['grid grid-cols-1 sm:grid-cols-4 gap-4', showFilters ? 'block' : 'hidden sm:grid']">
-          <div class="relative">
+        <div :class="['grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1.5fr)_repeat(3,minmax(0,1fr))]', showFilters ? 'block' : 'hidden sm:grid']">
+          <div class="relative xl:min-w-[20rem]">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search class="h-4 w-4 text-zinc-400" />
             </div>
@@ -142,7 +142,7 @@ onMounted(loadAll);
 
       <!-- Table -->
       <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm whitespace-nowrap">
+        <table class="w-full min-w-[760px] text-left text-sm whitespace-nowrap">
           <thead class="bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500 dark:text-zinc-400">
             <tr>
               <th scope="col" class="px-6 py-3 font-medium">标题</th>
@@ -171,7 +171,7 @@ onMounted(loadAll);
               :key="row.id"
               class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors"
             >
-              <td class="px-6 py-4">
+              <td class="px-6 py-4 min-w-[18rem]">
                 <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ row.title }}</div>
                 <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">ID: {{ row.id }} · {{ formatDate(row.createdAt) }}</div>
               </td>

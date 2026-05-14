@@ -27,12 +27,14 @@ const routes = [
       {
         path: 'articles/new',
         name: 'ArticleNew',
-        component: () => import('../views/ArticleEdit.vue')
+        component: () => import('../views/ArticleEdit.vue'),
+        meta: { layout: 'editor' }
       },
       {
         path: 'articles/edit/:id',
         name: 'ArticleEdit',
-        component: () => import('../views/ArticleEdit.vue')
+        component: () => import('../views/ArticleEdit.vue'),
+        meta: { layout: 'editor' }
       },
       {
         path: 'categories',
@@ -69,7 +71,7 @@ const resolveRedirectPath = (redirect) => {
   return redirect === '/login' ? '/' : redirect;
 };
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const userStore = useUserStore();
   
   if (to.meta.requiresAuth) {
