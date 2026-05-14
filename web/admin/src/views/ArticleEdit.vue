@@ -646,8 +646,40 @@ onMounted(async () => {
   color: #6b7280;
   margin: 1em 0;
 }
+.prose table {
+  width: 100%;
+  margin: 1.5em 0;
+  border-collapse: collapse;
+  font-size: 0.95em;
+}
+.prose thead {
+  background-color: #f4f4f5;
+}
+.prose th,
+.prose td {
+  padding: 0.75rem 0.875rem;
+  border: 1px solid #e4e4e7;
+  text-align: left;
+  vertical-align: top;
+}
+.prose th {
+  font-weight: 600;
+}
+.prose tbody tr:nth-child(even) {
+  background-color: #fafafa;
+}
 .dark .prose blockquote {
   border-left-color: #374151;
   color: #9ca3af;
+}
+.dark .prose thead {
+  background-color: #27272a;
+}
+.dark .prose th,
+.dark .prose td {
+  border-color: #3f3f46;
+}
+.dark .prose tbody tr:nth-child(even) {
+  background-color: #18181b;
 }
 </style>
