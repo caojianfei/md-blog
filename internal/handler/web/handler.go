@@ -156,7 +156,8 @@ func (h *Handler) RSS(w http.ResponseWriter, _ *http.Request) {
 		Channel Channel  `xml:"channel"`
 	}
 
-	feed := RSS{Version: "2.0", Channel: Channel{Title: h.c.Config.App.Name, Link: h.c.Config.App.BaseURL, Description: h.c.Config.SEO.DefaultDescription}}
+	site, _ := h.c.SettingRepo.Get()
+	feed := RSS{Version: "2.0", Channel: Channel{Title: h.c.Config.App.Name, Link: h.c.Config.App.BaseURL, Description: site.SiteDescription}}
 	for _, article := range items {
 		feed.Channel.Items = append(feed.Channel.Items, Item{Title: article.Title, Link: h.c.Config.App.BaseURL + "/posts/" + url.PathEscape(article.Slug), Description: article.Excerpt})
 	}

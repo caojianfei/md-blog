@@ -710,12 +710,23 @@ input {
 .article-toc {
   position: sticky;
   top: 96px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
   padding: 8px 0 0 0;
   border: 0;
   background: transparent;
   box-shadow: none;
   backdrop-filter: none;
   min-width: 0;
+}
+
+.article-toc::-webkit-scrollbar {
+  width: 4px;
+}
+
+.article-toc::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
 }
 
 .article-toc h3 {
@@ -1283,6 +1294,8 @@ html[data-theme="system"] .ow {
 
   .article-toc {
     position: static;
+    max-height: none;
+    overflow-y: visible;
   }
 }
 

@@ -12,8 +12,6 @@ type Config struct {
     Database DatabaseConfig
     Storage  StorageConfig
     Admin    AdminConfig
-    Theme    ThemeConfig
-    SEO      SEOConfig
 }
 
 type AppConfig struct {
@@ -56,17 +54,6 @@ type AdminConfig struct {
     Password string
 }
 
-type ThemeConfig struct {
-    Default string
-}
-
-type SEOConfig struct {
-    DefaultTitle       string
-    DefaultDescription string
-    DefaultKeywords    string
-    DefaultCover       string
-}
-
 func Load() Config {
     dataDir := getEnv("APP_DATA_DIR", "./data")
     localUploadDir := getEnv("STORAGE_LOCAL_DIR", dataDir+"/uploads")
@@ -107,15 +94,6 @@ func Load() Config {
         Admin: AdminConfig{
             Username: getEnv("ADMIN_USERNAME", "admin"),
             Password: getEnv("ADMIN_PASSWORD", "admin123456"),
-        },
-        Theme: ThemeConfig{
-            Default: getEnv("THEME_DEFAULT", "system"),
-        },
-        SEO: SEOConfig{
-            DefaultTitle:       getEnv("SEO_DEFAULT_TITLE", "Cybernote Blog"),
-            DefaultDescription: getEnv("SEO_DEFAULT_DESCRIPTION", "A modern personal blog built with Go SSR and Vue admin."),
-            DefaultKeywords:    getEnv("SEO_DEFAULT_KEYWORDS", "blog,golang,vue,markdown"),
-            DefaultCover:       getEnv("SEO_DEFAULT_COVER", ""),
         },
     }
 

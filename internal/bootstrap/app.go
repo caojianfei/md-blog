@@ -76,7 +76,7 @@ func New(cfg config.Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	seoService := seoSvc.New(cfg, settingRepo)
+	seoService := seoSvc.New(cfg.App.BaseURL, settingRepo)
 
 	container := &appcontainer.Container{Config: cfg, DB: db, SQLDB: sqlDB, Sessions: sessionStore, Renderer: renderer, TemplateFS: templateFS, AssetFS: assetFS, AdminFS: adminFS, ArticleRepo: articleRepo, CategoryRepo: categoryRepo, TagRepo: tagRepo, MediaRepo: mediaRepo, SettingRepo: settingRepo, AdminRepo: adminRepo, Markdown: markdownService, Article: articleService, Auth: authService, Media: mediaService, SEO: seoService}
 	mux := router.New(container)
