@@ -38,6 +38,7 @@ type PageData struct {
 	AboutHTML       string
 	PublishedCount  int64
 	ArchiveCount    int
+	IsPreview       bool
 }
 
 func New(c *appcontainer.Container) *Handler { return &Handler{c: c} }
@@ -53,16 +54,38 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Article(w http.ResponseWriter, r *http.Request) {
-	article, err := h.c.Article.FindBySlug(chi.URLParam(r, "slug"))
-	if err != nil || article.Status != model.ArticleStatusPublished {
+	slug := chi.URLParam(r, "slug")
+	article, err := h.c.Article.FindBySlug(slug)
+	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
+
+	isPreview := false
+	if previewKey := r.URL.Query().Get("preview_key"); previewKey != "" {
+		if previewKey != h.c.Config.App.PreviewSecret {
+			http.NotFound(w, r)
+			return
+		}
+		ok, _, authErr := h.c.Auth.CurrentUser(r)
+		if authErr != nil || !ok {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		isPreview = true
+	} else {
+		if article.Status != model.ArticleStatusPublished {
+			http.NotFound(w, r)
+			return
+		}
+	}
+
 	prev, next, _ := h.c.Article.PrevNext(article)
 	data := h.baseData(article.Title, r.URL.Path, article.SEODescription, article.SEOKeywords)
 	data.Article = article
 	data.PrevArticle = prev
 	data.NextArticle = next
+	data.IsPreview = isPreview
 	if rendered, renderErr := h.c.Markdown.Render(article.Content); renderErr == nil {
 		data.Article.HTMLContent = rendered.HTML
 		data.Headings = rendered.Headings

@@ -3,6 +3,7 @@
 <meta name="description" content="{{.Meta.Description}}">
 <meta name="keywords" content="{{.Meta.Keywords}}">
 <link rel="canonical" href="{{.Meta.Canonical}}">
+{{if .IsPreview}}<meta name="robots" content="noindex, nofollow">{{end}}
 <meta property="og:title" content="{{.Meta.Title}}">
 <meta property="og:description" content="{{.Meta.Description}}">
 <meta property="og:type" content="{{.Meta.Type}}">

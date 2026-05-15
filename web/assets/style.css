@@ -1353,3 +1353,32 @@ html[data-theme="system"] .ow {
     display: none;
   }
 }
+
+/* Draft preview banner */
+.preview-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 0.5rem;
+  color: #92400e;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+html[data-theme="dark"] .preview-banner {
+  background: #451a03;
+  border-color: #92400e;
+  color: #fde68a;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-theme="system"] .preview-banner {
+    background: #451a03;
+    border-color: #92400e;
+    color: #fde68a;
+  }
+}

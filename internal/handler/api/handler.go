@@ -282,6 +282,12 @@ func (h *Handler) DeleteMedia(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, response{Code: 0, Message: "ok"})
 }
 
+func (h *Handler) PreviewConfig(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, response{Code: 0, Message: "ok", Data: map[string]string{
+		"previewKey": h.c.Config.App.PreviewSecret,
+	}})
+}
+
 func writeJSON(w http.ResponseWriter, status int, payload response) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

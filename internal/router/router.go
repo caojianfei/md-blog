@@ -44,6 +44,7 @@ func New(c *appcontainer.Container) http.Handler {
 			guarded.Get("/articles", api.ListArticles)
 			guarded.Post("/articles", api.SaveArticle)
 			guarded.Get("/articles/{id}", api.GetArticle)
+			guarded.Get("/preview-config", api.PreviewConfig)
 			guarded.Post("/articles/{id}/status", api.UpdateArticleStatus)
 			guarded.Post("/articles/preview", api.PreviewMarkdown)
 			guarded.Get("/categories", api.ListCategories)
