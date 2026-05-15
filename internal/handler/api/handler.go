@@ -321,4 +321,65 @@ func normalizeSlug(raw, fallback string) string {
 	return value
 }
 
+func (h *Handler) TerminalArticles(w http.ResponseWriter, _ *http.Request) {
+	filter := repository.ArticleFilter{
+		Status:   "published",
+		Page:     1,
+		PageSize: 5,
+	}
+	items, _, err := h.c.Article.List(filter)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, response{Code: 500, Message: err.Error()})
+		return
+	}
+
+	articles := make([]map[string]string, 0, len(items))
+	for _, item := range items {
+		articles = append(articles, map[string]string{
+			"title": item.Title,
+			"date":  item.PublishedAt.Format("2006-01-02"),
+			"slug":  item.Slug,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, response{Code: 0, Message: "ok", Data: map[string]any{"articles": articles}})
+}
+
+func (h *Handler) TerminalCategories(w http.ResponseWriter, _ *http.Request) {
+	categories, err := h.c.CategoryRepo.List()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, response{Code: 500, Message: err.Error()})
+		return
+	}
+
+	result := make([]map[string]any, 0, len(categories))
+	for _, cat := range categories {
+		result = append(result, map[string]any{
+			"name":        cat.Name,
+			"slug":        cat.Slug,
+			"description": cat.Description,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, response{Code: 0, Message: "ok", Data: map[string]any{"categories": result}})
+}
+
+func (h *Handler) TerminalTags(w http.ResponseWriter, _ *http.Request) {
+	tags, err := h.c.TagRepo.List()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, response{Code: 500, Message: err.Error()})
+		return
+	}
+
+	result := make([]map[string]string, 0, len(tags))
+	for _, tag := range tags {
+		result = append(result, map[string]string{
+			"name": tag.Name,
+			"slug": tag.Slug,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, response{Code: 0, Message: "ok", Data: map[string]any{"tags": result}})
+}
+
 var _ = fmt.Sprintf

@@ -33,6 +33,12 @@
         <a class="{{if eq .Path "/archives"}}is-active{{end}}" href="/archives">归档</a>
         <a class="{{if eq .Path "/about"}}is-active{{end}}" href="/about">关于</a>
         <a href="/rss.xml">RSS</a>
+        <a class="search-link" href="/search" aria-label="搜索">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="M16 16l4.5 4.5"></path>
+          </svg>
+        </a>
       </nav>
       <button
         class="theme-toggle"

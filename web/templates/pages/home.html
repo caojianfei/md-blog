@@ -6,34 +6,34 @@
       <span class="eyebrow">High-End Minimalist Tech Aesthetics</span>
       <h1>{{.Site.HeroTitle}}</h1>
       <p>{{.Site.HeroDescription}}</p>
-      <form class="search-form" action="/search" method="get">
-        <input type="search" name="q" placeholder="{{.Site.SearchPlaceholder}}">
-        <button class="button" type="submit">搜索文章</button>
-      </form>
-      <div class="hero-actions">
-        <a class="button--ghost" href="/archives">查看归档</a>
-        <a class="button--ghost" href="/about">关于我</a>
-      </div>
     </section>
-    <aside class="terminal-panel">
-      <pre>~/{{.Site.SiteName}}
-$ whoami
-builder@md-blog
-
-$ ls -1 modules
-home
-posts
-archives
-about
-
-$ echo $THEME
-{{if .Site.ThemeDefault}}{{.Site.ThemeDefault}}{{else}}system{{end}}
-
-$ cat runtime/status
-articles={{len .Articles}}
-categories={{len .Categories}}
-tags={{len .Tags}}
-archives={{.ArchiveCount}}</pre>
+    <aside class="terminal-panel" data-terminal>
+      <div class="terminal-header">
+        <span class="terminal-dot"></span>
+        <span class="terminal-dot"></span>
+        <span class="terminal-dot"></span>
+        <span class="terminal-title">live session</span>
+      </div>
+      <div class="terminal-body">
+        <div class="terminal-output" data-terminal-output>
+          <div class="terminal-line">
+            <span class="terminal-prompt">~/{{.Site.SiteName}} $</span>
+            <span class="terminal-welcome">Welcome! 输入 help 查看可用命令</span>
+          </div>
+        </div>
+        <div class="terminal-input-line">
+          <span class="terminal-prompt">~/{{.Site.SiteName}} $</span>
+          <input type="text" class="terminal-input" data-terminal-input spellcheck="false" autocomplete="off" placeholder="输入命令...">
+        </div>
+      </div>
+      <div class="terminal-data" style="display:none"
+        data-site-name="{{.Site.SiteName}}"
+        data-articles-count="{{len .Articles}}"
+        data-categories-count="{{len .Categories}}"
+        data-tags-count="{{len .Tags}}"
+        data-archives-count="{{.ArchiveCount}}"
+        data-theme="{{if .Site.ThemeDefault}}{{.Site.ThemeDefault}}{{else}}system{{end}}"
+      ></div>
     </aside>
   </div>
 
