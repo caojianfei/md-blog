@@ -763,187 +763,235 @@ class PixelCat {
     const S = this.SCALE;
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // 读取当前主题颜色
-    const style = getComputedStyle(document.documentElement);
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
       (document.documentElement.getAttribute('data-theme') === 'system' &&
         window.matchMedia('(prefers-color-scheme: dark)').matches);
 
     const colors = isDark
-      ? { body: '#c9d1d9', outline: '#30363d', inner: '#8b949e', eye: '#58a6ff', nose: '#f85149', belly: '#21262d' }
-      : { body: '#3d3d3d', outline: '#1a1a1a', inner: '#666666', eye: '#007aff', nose: '#ff5f57', belly: '#f6f8fa' };
+      ? { O: '#30363d', W: '#e6edf3', A: '#29b6f6', S: '#161b22', E: '#00e5ff', N: '#ff8a80', B: '#ffee58' }
+      : { O: '#1c2833', W: '#ffffff', A: '#03a9f4', S: '#263238', E: '#00b0ff', N: '#ff5252', B: '#ffeb3b' };
 
-    const px = (lx, ly, w, h, color) => {
-      ctx.fillStyle = color;
-      ctx.fillRect(
-        Math.round(lx * S),
-        Math.round(ly * S),
-        (w || 1) * S,
-        (h || 1) * S
-      );
+    const frames = {
+      idle: [
+        " OO      OO     ",
+        "OAAO    OAAO    ",
+        "OAAO    OAAO    ",
+        "OWWOOOOOOWWO    ",
+        "OWSSSSSSSSWO    ",
+        "OWSSSSSSSSWO    ",
+        "OWSEESSEESWO    ",
+        "OWSEESSEESWO    ",
+        "OWSSSNNSSSWO    ",
+        "OWSSSSSSSSWO    ",
+        "OWWWWWWWWWWO  OO",
+        " OOOOOOOOOO  OAO",
+        " OAAABBAAAO  OAO",
+        " OWWWWWWWWO  OAO",
+        " OWOWWOWWOO OAO ",
+        "  OO OO OO OOO  "
+      ],
+      walk1: [
+        " OO      OO     ",
+        "OAAO    OAAO    ",
+        "OAAO    OAAO    ",
+        "OWWOOOOOOWWO    ",
+        "OWSSSSSSSSWO    ",
+        "OWSSSSSSSSWO    ",
+        "OWSEESSEESWO    ",
+        "OWSEESSEESWO    ",
+        "OWSSSNNSSSWO    ",
+        "OWSSSSSSSSWO    ",
+        "OWWWWWWWWWWO  OO",
+        " OOOOOOOOOO  OAO",
+        " OAAABBAAAO  OAO",
+        " OWWWWWWWWO  OAO",
+        " OWOWWOWWOO OAO ",
+        "  OO OO OO OOO  "
+      ],
+      walk2: [
+        " OO      OO     ",
+        "OAAO    OAAO    ",
+        "OAAO    OAAO    ",
+        "OWWOOOOOOWWO    ",
+        "OWSSSSSSSSWO    ",
+        "OWSSSSSSSSWO    ",
+        "OWSEESSEESWO    ",
+        "OWSEESSEESWO    ",
+        "OWSSSNNSSSWO    ",
+        "OWSSSSSSSSWO    ",
+        "OWWWWWWWWWWO  OO",
+        " OOOOOOOOOO  OAO",
+        " OAAABBAAAO OAO ",
+        " OWWWWWWWWO OAO ",
+        " OWWOWWWOWOOOO  ",
+        " OO  OO  OO     "
+      ],
+      sit: [
+        " OO      OO     ",
+        "OAAO    OAAO    ",
+        "OAAO    OAAO    ",
+        "OWWOOOOOOWWO    ",
+        "OWSSSSSSSSWO    ",
+        "OWSSSSSSSSWO    ",
+        "OWSEESSEESWO    ",
+        "OWESSEESSEWO    ",
+        "OWSSSNNSSSWO  OO",
+        "OWSSSSSSSSWO OAO",
+        "OWWWWWWWWWWOOAO ",
+        " OOOOOOOOOO OAO ",
+        " OAAABBAAAOOAO  ",
+        " OWWWWWWWWOOO   ",
+        " OWWWWWWWWOO    ",
+        "  OOOOOOOOO     "
+      ],
+      sleep: [
+        "                ",
+        "                ",
+        " OO      OO     ",
+        "OAAO    OAAO    ",
+        "OAAO    OAAO    ",
+        "OWWOOOOOOWWO    ",
+        "OWSSSSSSSSWO    ",
+        "OWSSSSSSSSWO    ",
+        "OWSSSSSSSSWO  OO",
+        "OWSEESSEESWO OAO",
+        "OWSSSNNSSSWO OAO",
+        "OWWWWWWWWWWOOAO ",
+        " OOOOOOOOOO OAO ",
+        " OAAABBAAAOOAO  ",
+        " OWWWWWWWWWOO   ",
+        "  OOOOOOOOOO    "
+      ],
+      scared1: [
+        " OO      OO     ",
+        "OAAO    OAAO    ",
+        "OAAO    OAAO    ",
+        "OWWOOOOOOWWO    ",
+        "OWSSSSSSSSWO    ",
+        "OWSSSSSSSSWO    ",
+        "OWEESSSSEEWO    ",
+        "OWSEESSEESWO    ",
+        "OWSSSNNSSSWO    ",
+        "OWSSSSSSSSWO    ",
+        "OWWWWWWWWWWO OO ",
+        " OOOOOOOOOO OAO ",
+        " OAAABBAAAOOAO  ",
+        " OWWWWWWWWWOO   ",
+        " OWWOWWWOWOO    ",
+        "  OO  OO  O     "
+      ],
+      scared2: [
+        " OO      OO     ",
+        "OAAO    OAAO    ",
+        "OAAO    OAAO    ",
+        "OWWOOOOOOWWO    ",
+        "OWSSSSSSSSWO    ",
+        "OWSSSSSSSSWO    ",
+        "OWEESSSSEEWO    ",
+        "OWSEESSEESWO    ",
+        "OWSSSNNSSSWO    ",
+        "OWSSSSSSSSWO    ",
+        "OWWWWWWWWWWOOO  ",
+        " OOOOOOOOOO OAO ",
+        " OAAABBAAAO OAO ",
+        " OWWWWWWWWO  OO ",
+        " OWOWWOWWOO     ",
+        " OO OO OO       "
+      ]
     };
 
-    // 动画帧索引（2帧循环）
     const f = this.frame % 2;
-    // 帧偏移：走路时腿上下交替
-    const legOff = (this.state === 'walk' || this.state === 'run' || this.state === 'scared') ? (f === 0 ? 0 : 1) : 0;
-    // 睡眠时身体压扁
     const isSleep = this.state === 'sleep';
-    // 坐下
-    const isSit = this.state === 'sit';
-    // 翻滚时腿收起
     const isRoll = this.state === 'roll';
+    
+    let currentFrame = frames.idle;
+    if (this.state === 'walk' || this.state === 'run') {
+      currentFrame = f === 0 ? frames.walk1 : frames.walk2;
+    } else if (this.state === 'sit') {
+      currentFrame = frames.sit;
+    } else if (isSleep) {
+      currentFrame = frames.sleep;
+    } else if (this.state === 'scared') {
+      currentFrame = f === 0 ? frames.scared1 : frames.scared2;
+    } else if (isRoll) {
+      currentFrame = frames.sit;
+    }
 
     ctx.save();
     
     const bx = this.x;
     const by = this.y;
 
-    // 翻滚旋转中心
     if (isRoll) {
       const cx = (bx + this.CAT_W / 2) * S;
       const cy = (by + this.CAT_H / 2) * S;
       ctx.translate(cx, cy);
-      // 左右摇晃翻滚
       const angle = Math.sin(this.rollTick * 0.2) * Math.PI * 0.5;
       ctx.rotate(angle);
       ctx.translate(-cx, -cy);
     }
 
-    // 左右翻转
-    if (this.facing === -1) {
+    if (this.facing === 1) {
       ctx.translate((this.x + this.CAT_W) * S, 0);
       ctx.scale(-1, 1);
       ctx.translate(-this.x * S, 0);
     }
 
-    // ── 耳朵 ──
-    if (!isSleep) {
-      px(bx + 1, by,     2, 2, colors.outline);  // 左耳外
-      px(bx + 13, by,    2, 2, colors.outline);  // 右耳外
-      px(bx + 1, by + 1, 1, 1, colors.nose);     // 左耳内
-      px(bx + 14, by + 1,1, 1, colors.nose);     // 右耳内
-    }
+    // Blink logic
+    this.tick = (this.tick || 0) + 1;
+    const isBlinking = (this.state === 'idle' || this.state === 'walk' || this.state === 'sit') && (this.tick % 120 < 6);
 
-    // ── 头部 ──
-    const headY = isSleep ? by + 2 : by + 2;
-    px(bx + 1,  headY,     14, 7, colors.body);    // 头主体
-    px(bx,      headY + 1, 1,  5, colors.body);    // 左侧
-    px(bx + 15, headY + 1, 1,  5, colors.body);    // 右侧
-    // 描边
-    px(bx + 1,  headY - 1, 14, 1, colors.outline);
-    px(bx,      headY,     1,  1, colors.outline);
-    px(bx + 15, headY,     1,  1, colors.outline);
-
-    // ── 眼睛 ──
-    if (isSleep) {
-      // 睡眠：闭眼 "-"
-      px(bx + 4,  headY + 3, 2, 1, colors.outline);
-      px(bx + 10, headY + 3, 2, 1, colors.outline);
-    } else if (this.state === 'scared') {
-      // 惊吓：大眼睛
-      px(bx + 4,  headY + 2, 2, 2, colors.eye);
-      px(bx + 10, headY + 2, 2, 2, colors.eye);
-      px(bx + 4,  headY + 2, 1, 1, '#ffffff');
-      px(bx + 10, headY + 2, 1, 1, '#ffffff');
-    } else {
-      // 普通眼睛
-      px(bx + 4,  headY + 2, 2, 2, colors.eye);
-      px(bx + 10, headY + 2, 2, 2, colors.eye);
-      px(bx + 4,  headY + 2, 1, 1, '#ffffff');
-      px(bx + 10, headY + 2, 1, 1, '#ffffff');
-      // 眨眼动画（每60帧眨一次）
-      if (this.frame % 60 === 0) {
-        px(bx + 4,  headY + 3, 2, 1, colors.body);
-        px(bx + 10, headY + 3, 2, 1, colors.body);
-      }
-    }
-
-    // ── 鼻子 ──
-    px(bx + 7,  headY + 4, 2, 1, colors.nose);
-    // ── 嘴 ──
-    px(bx + 7,  headY + 5, 1, 1, colors.outline);
-    px(bx + 8,  headY + 5, 1, 1, colors.outline);
-    // ── 胡须 ──
-    px(bx + 1,  headY + 4, 3, 1, colors.inner);
-    px(bx + 12, headY + 4, 3, 1, colors.inner);
-    px(bx + 2,  headY + 5, 2, 1, colors.inner);
-    px(bx + 12, headY + 5, 2, 1, colors.inner);
-
-    // ── 身体 ──
-    const bodyY = headY + 6;
-    const bodyH = isSleep ? 4 : isSit ? 5 : 5;
-    px(bx + 2, bodyY,     12, bodyH, colors.body);
-    px(bx + 1, bodyY + 1, 14, bodyH - 2, colors.body);
-    // 肚皮
-    px(bx + 5, bodyY + 1, 6,  bodyH - 2, colors.belly);
-
-    // ── 尾巴 ──
-    if (isSleep) {
-      // 睡眠：尾巴弯曲包住身体
-      px(bx + 14, bodyY + 1, 2, 1, colors.body);
-      px(bx + 15, bodyY + 2, 1, 2, colors.body);
-      px(bx + 13, bodyY + 4, 3, 1, colors.body);
-    } else if (isSit) {
-      // 坐下：尾巴竖起
-      px(bx + 14, bodyY,     1, 4, colors.body);
-      px(bx + 15, bodyY - 1, 1, 2, colors.body);
-    } else {
-      // 行走/站立：尾巴摇摆
-      const tailOff = f === 0 ? 0 : -1;
-      px(bx + 14, bodyY + 1 + tailOff, 1, 3, colors.body);
-      px(bx + 15, bodyY + tailOff,     1, 2, colors.body);
-    }
-
-    // ── 腿 ──
-    if (!isSleep && !isSit && !isRoll) {
-      // 前腿
-      px(bx + 3, bodyY + bodyH,     2, 2 + legOff,       colors.body);
-      px(bx + 11, bodyY + bodyH,    2, 2 + (1 - legOff), colors.body);
-      // 后腿
-      px(bx + 3, bodyY + bodyH + 1 + legOff,       2, 1, colors.outline);
-      px(bx + 11, bodyY + bodyH + 1 + (1-legOff),  2, 1, colors.outline);
-    } else if (isSit) {
-      // 坐下：腿折叠在前
-      px(bx + 3,  bodyY + bodyH, 3, 2, colors.body);
-      px(bx + 10, bodyY + bodyH, 3, 2, colors.body);
-    } else if (isRoll) {
-      // 翻滚：腿收起
-      px(bx + 3,  bodyY + bodyH, 2, 1, colors.body);
-      px(bx + 11, bodyY + bodyH, 2, 1, colors.body);
-    } else if (isSleep) {
-      // 睡眠：腿平铺
-      px(bx + 2, bodyY + bodyH, 5, 2, colors.body);
-      px(bx + 9, bodyY + bodyH, 4, 2, colors.body);
-    }
-
-    // ── 睡眠 zzz ──
-    if (isSleep && this.frame % 4 < 2) {
-      ctx.fillStyle = colors.inner;
-      ctx.font = `${S * 2}px monospace`;
-      ctx.fillText('z', (bx + 16) * S, (by + 4) * S);
-      if (this.frame % 8 < 4) {
-        ctx.fillText('z', (bx + 18) * S, (by + 2) * S);
+    for (let y = 0; y < 16; y++) {
+      const row = currentFrame[y];
+      for (let x = 0; x < 16; x++) {
+        const char = row[x];
+        if (char !== ' ') {
+          let color = colors[char];
+          if (isBlinking && char === 'E' && this.state !== 'scared') {
+            color = colors.S;
+          }
+          ctx.fillStyle = color;
+          ctx.fillRect(
+            Math.round((bx + x) * S),
+            Math.round((by + y) * S),
+            S, S
+          );
+        }
       }
     }
 
     ctx.restore();
 
-    // ── 地面阴影 ──
-    ctx.save();
-      ctx.fillStyle = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
-      ctx.beginPath();
-      ctx.ellipse(
-        (this.x + this.CAT_W / 2) * S,
-        (this.groundY + this.CAT_H + 2) * S,
-        this.CAT_W * S * 0.5,
-        2 * S,
-        0, 0, Math.PI * 2
-      );
-      ctx.fill();
-      ctx.restore();
+    // Sleep zZ
+    if (isSleep && this.frame % 4 < 2) {
+      ctx.fillStyle = colors.A;
+      ctx.font = `bold ${S * 2.5}px monospace`;
+      let zx1 = bx + 14, zx2 = bx + 16;
+      if (this.facing === 1) {
+        zx1 = bx - 1;
+        zx2 = bx - 3;
+      }
+      ctx.fillText('z', zx1 * S, (by + 4) * S);
+      if (this.frame % 8 < 4) {
+        ctx.fillText('Z', zx2 * S, (by + 1) * S);
+      }
+    }
 
-    // ── 更新气泡位置（跟随猫） ──
+    // 地面阴影
+    ctx.save();
+    ctx.fillStyle = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
+    ctx.beginPath();
+    ctx.ellipse(
+      (this.x + this.CAT_W / 2) * S,
+      (this.groundY + this.CAT_H + 1) * S,
+      this.CAT_W * S * 0.45,
+      1.5 * S,
+      0, 0, Math.PI * 2
+    );
+    ctx.fill();
+    ctx.restore();
+
+    // 更新气泡位置
     const catCenterX = (this.x + this.CAT_W / 2) * S;
     const catTopY = this.y * S;
     this.bubble.style.left = `${catCenterX}px`;
