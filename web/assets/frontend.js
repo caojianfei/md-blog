@@ -514,4 +514,433 @@ document.addEventListener("DOMContentLoaded", () => {
   if (terminalElement) {
     new Terminal(terminalElement);
   }
+  const catStage = document.querySelector('[data-pixel-cat]');
+  if (catStage) {
+    new PixelCat(catStage);
+  }
 });
+
+/* =====================
+   Pixel Cat — 像素风小猫
+   ===================== */
+class PixelCat {
+  constructor(stage) {
+    this.stage = stage;
+    this.canvas = stage.querySelector('.pixel-cat-canvas');
+    this.bubble = stage.querySelector('[data-cat-bubble]');
+    this.ctx = this.canvas.getContext('2d');
+
+    // 逻辑像素尺寸（每个"像素"= SCALE 个 canvas 像素）
+    this.SCALE = 4;
+    this.CAT_W = 16; // 猫身逻辑宽
+    this.CAT_H = 16; // 猫身逻辑高
+
+    // 世界坐标（逻辑像素）
+    this.x = 30;
+    this.y = 0; // 将在 resize 后设置
+    this.vx = 0;
+    this.facing = 1; // 1=右 -1=左
+
+    // 鼠标（相对 stage，逻辑像素）
+    this.mouseX = -999;
+    this.mouseY = -999;
+    this.mouseInStage = false;
+
+    // 状态机
+    // states: idle | walk | sit | sleep | jump | run | scared
+    this.state = 'idle';
+    this.frame = 0;
+    this.frameTick = 0;
+    this.FRAME_DURATION = 8; // 每帧持续多少 tick
+
+    // 气泡
+    this.bubbleTimer = null;
+
+    // idle/sleep 计时
+    this.idleTick = 0;
+    this.IDLE_TO_SIT = 180;   // ~3s → sit
+    this.SIT_TO_SLEEP = 360;  // ~6s → sleep
+
+    // 跳跃参数
+    this.jumpVy = 0;
+    this.gravity = 0.3;
+    this.groundY = 0;
+    this.isJumping = false;
+
+    // scared 计时
+    this.scaredTick = 0;
+
+    this.resize();
+    this.bindEvents();
+    this.loop();
+  }
+
+  /* ── 画布尺寸同步 ── */
+  resize() {
+    const rect = this.stage.getBoundingClientRect();
+    this.canvas.width = rect.width;
+    this.canvas.height = rect.height;
+    this.stageW = rect.width / this.SCALE;
+    this.stageH = rect.height / this.SCALE;
+    this.groundY = this.stageH - this.CAT_H - 2;
+    if (this.y <= 0) this.y = this.groundY;
+    this.x = Math.min(this.x, this.stageW - this.CAT_W);
+  }
+
+  /* ── 事件绑定 ── */
+  bindEvents() {
+    this.stage.addEventListener('mousemove', (e) => {
+      const rect = this.stage.getBoundingClientRect();
+      this.mouseX = (e.clientX - rect.left) / this.SCALE;
+      this.mouseY = (e.clientY - rect.top) / this.SCALE;
+      this.mouseInStage = true;
+
+      // 如果猫在睡觉，被惊醒
+      if (this.state === 'sleep' || this.state === 'sit') {
+        this.setState('scared');
+        this.showBubble('！！');
+      }
+    });
+
+    this.stage.addEventListener('mouseleave', () => {
+      this.mouseInStage = false;
+    });
+
+    this.stage.addEventListener('mouseenter', () => {
+      this.mouseInStage = true;
+      if (this.state === 'sleep') {
+        this.setState('scared');
+        this.showBubble('！！');
+      }
+    });
+
+    this.stage.addEventListener('click', () => {
+      if (!this.isJumping) {
+        this.setState('jump');
+        const msgs = ['喵～', '(=｀ω´=)', '(=^･ω･^=)', '喵！', '(=^▽^=)'];
+        this.showBubble(msgs[Math.floor(Math.random() * msgs.length)]);
+      }
+    });
+
+    window.addEventListener('resize', () => this.resize());
+  }
+
+  /* ── 状态切换 ── */
+  setState(s) {
+    if (this.state === s) return;
+    this.state = s;
+    this.frame = 0;
+    this.frameTick = 0;
+    this.idleTick = 0;
+    if (s === 'jump') {
+      this.jumpVy = -5;
+      this.isJumping = true;
+    }
+    if (s === 'scared') {
+      this.scaredTick = 0;
+      // 往反方向跑
+      this.facing = this.mouseX > this.x ? -1 : 1;
+    }
+  }
+
+  /* ── 气泡 ── */
+  showBubble(text) {
+    clearTimeout(this.bubbleTimer);
+    this.bubble.textContent = text;
+
+    // 定位气泡到猫咪中心上方
+    const catCenterX = (this.x + this.CAT_W / 2) * this.SCALE;
+    const catTopY = this.y * this.SCALE;
+    this.bubble.style.left = `${catCenterX}px`;
+    this.bubble.style.bottom = `${this.canvas.height - catTopY + 4}px`;
+    this.bubble.style.transform = 'translateX(-50%)';
+
+    this.bubble.classList.add('is-visible');
+    this.bubbleTimer = setTimeout(() => {
+      this.bubble.classList.remove('is-visible');
+    }, 1800);
+  }
+
+  /* ── 主循环 ── */
+  loop() {
+    this.update();
+    this.draw();
+    requestAnimationFrame(() => this.loop());
+  }
+
+  /* ── 逻辑更新 ── */
+  update() {
+    this.frameTick++;
+    if (this.frameTick >= this.FRAME_DURATION) {
+      this.frameTick = 0;
+      this.frame++;
+    }
+
+    switch (this.state) {
+      case 'idle': this.updateIdle(); break;
+      case 'walk': this.updateWalk(); break;
+      case 'sit':  this.updateSit();  break;
+      case 'sleep':this.updateSleep();break;
+      case 'jump': this.updateJump(); break;
+      case 'run':  this.updateRun();  break;
+      case 'scared':this.updateScared();break;
+    }
+
+    // 边界钳制
+    this.x = Math.max(0, Math.min(this.stageW - this.CAT_W, this.x));
+  }
+
+  updateIdle() {
+    this.idleTick++;
+    if (this.mouseInStage) {
+      const dx = this.mouseX - (this.x + this.CAT_W / 2);
+      if (Math.abs(dx) > this.CAT_W * 2) {
+        this.facing = dx > 0 ? 1 : -1;
+        this.setState('walk');
+        return;
+      }
+    }
+    if (this.idleTick > this.IDLE_TO_SIT) this.setState('sit');
+  }
+
+  updateWalk() {
+    if (!this.mouseInStage) {
+      this.setState('idle');
+      return;
+    }
+    const dx = this.mouseX - (this.x + this.CAT_W / 2);
+    if (Math.abs(dx) < this.CAT_W * 1.5) {
+      this.setState('idle');
+      this.showBubble('喵～');
+      return;
+    }
+    this.facing = dx > 0 ? 1 : -1;
+    this.x += this.facing * 1.2;
+  }
+
+  updateSit() {
+    this.idleTick++;
+    if (this.idleTick > this.SIT_TO_SLEEP) this.setState('sleep');
+    if (this.mouseInStage) {
+      const dx = this.mouseX - (this.x + this.CAT_W / 2);
+      if (Math.abs(dx) > this.CAT_W * 3) {
+        this.setState('walk');
+      }
+    }
+  }
+
+  updateSleep() {
+    // 呼吸循环，什么都不做，等事件唤醒
+  }
+
+  updateJump() {
+    this.jumpVy += this.gravity;
+    this.y += this.jumpVy;
+    if (this.y >= this.groundY) {
+      this.y = this.groundY;
+      this.isJumping = false;
+      this.setState('idle');
+    }
+  }
+
+  updateRun() {
+    this.x += this.facing * 2.5;
+    if (this.x <= 0 || this.x >= this.stageW - this.CAT_W) {
+      this.facing *= -1;
+      this.setState('idle');
+    }
+    if (!this.mouseInStage) this.setState('idle');
+  }
+
+  updateScared() {
+    this.scaredTick++;
+    this.x += this.facing * 2.8;
+    if (this.scaredTick > 40 || this.x <= 0 || this.x >= this.stageW - this.CAT_W) {
+      this.setState('idle');
+    }
+  }
+
+  /* ── 绘制 ── */
+  draw() {
+    const ctx = this.ctx;
+    const S = this.SCALE;
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // 读取当前主题颜色
+    const style = getComputedStyle(document.documentElement);
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
+      (document.documentElement.getAttribute('data-theme') === 'system' &&
+        window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+    const colors = isDark
+      ? { body: '#c9d1d9', outline: '#30363d', inner: '#8b949e', eye: '#58a6ff', nose: '#f85149', belly: '#21262d' }
+      : { body: '#3d3d3d', outline: '#1a1a1a', inner: '#666666', eye: '#007aff', nose: '#ff5f57', belly: '#f6f8fa' };
+
+    const px = (lx, ly, w, h, color) => {
+      ctx.fillStyle = color;
+      ctx.fillRect(
+        Math.round(lx * S),
+        Math.round(ly * S),
+        (w || 1) * S,
+        (h || 1) * S
+      );
+    };
+
+    // 动画帧索引（2帧循环）
+    const f = this.frame % 2;
+    // 帧偏移：走路时腿上下交替
+    const legOff = (this.state === 'walk' || this.state === 'run' || this.state === 'scared') ? (f === 0 ? 0 : 1) : 0;
+    // 跳跃时腿收起
+    const isAir = this.isJumping;
+    // 睡眠时身体压扁
+    const isSleep = this.state === 'sleep';
+    // 坐下
+    const isSit = this.state === 'sit';
+
+    ctx.save();
+    // 左右翻转
+    if (this.facing === -1) {
+      ctx.translate((this.x + this.CAT_W) * S, 0);
+      ctx.scale(-1, 1);
+      ctx.translate(-this.x * S, 0);
+    }
+
+    const bx = this.x;
+    const by = this.y;
+
+    // ── 耳朵 ──
+    if (!isSleep) {
+      px(bx + 1, by,     2, 2, colors.outline);  // 左耳外
+      px(bx + 13, by,    2, 2, colors.outline);  // 右耳外
+      px(bx + 1, by + 1, 1, 1, colors.nose);     // 左耳内
+      px(bx + 14, by + 1,1, 1, colors.nose);     // 右耳内
+    }
+
+    // ── 头部 ──
+    const headY = isSleep ? by + 2 : by + 2;
+    px(bx + 1,  headY,     14, 7, colors.body);    // 头主体
+    px(bx,      headY + 1, 1,  5, colors.body);    // 左侧
+    px(bx + 15, headY + 1, 1,  5, colors.body);    // 右侧
+    // 描边
+    px(bx + 1,  headY - 1, 14, 1, colors.outline);
+    px(bx,      headY,     1,  1, colors.outline);
+    px(bx + 15, headY,     1,  1, colors.outline);
+
+    // ── 眼睛 ──
+    if (isSleep) {
+      // 睡眠：闭眼 "-"
+      px(bx + 4,  headY + 3, 2, 1, colors.outline);
+      px(bx + 10, headY + 3, 2, 1, colors.outline);
+    } else if (this.state === 'scared') {
+      // 惊吓：大眼睛
+      px(bx + 4,  headY + 2, 2, 2, colors.eye);
+      px(bx + 10, headY + 2, 2, 2, colors.eye);
+      px(bx + 4,  headY + 2, 1, 1, '#ffffff');
+      px(bx + 10, headY + 2, 1, 1, '#ffffff');
+    } else {
+      // 普通眼睛
+      px(bx + 4,  headY + 2, 2, 2, colors.eye);
+      px(bx + 10, headY + 2, 2, 2, colors.eye);
+      px(bx + 4,  headY + 2, 1, 1, '#ffffff');
+      px(bx + 10, headY + 2, 1, 1, '#ffffff');
+      // 眨眼动画（每60帧眨一次）
+      if (this.frame % 60 === 0) {
+        px(bx + 4,  headY + 3, 2, 1, colors.body);
+        px(bx + 10, headY + 3, 2, 1, colors.body);
+      }
+    }
+
+    // ── 鼻子 ──
+    px(bx + 7,  headY + 4, 2, 1, colors.nose);
+    // ── 嘴 ──
+    px(bx + 7,  headY + 5, 1, 1, colors.outline);
+    px(bx + 8,  headY + 5, 1, 1, colors.outline);
+    // ── 胡须 ──
+    px(bx + 1,  headY + 4, 3, 1, colors.inner);
+    px(bx + 12, headY + 4, 3, 1, colors.inner);
+    px(bx + 2,  headY + 5, 2, 1, colors.inner);
+    px(bx + 12, headY + 5, 2, 1, colors.inner);
+
+    // ── 身体 ──
+    const bodyY = headY + 6;
+    const bodyH = isSleep ? 4 : isSit ? 5 : 5;
+    px(bx + 2, bodyY,     12, bodyH, colors.body);
+    px(bx + 1, bodyY + 1, 14, bodyH - 2, colors.body);
+    // 肚皮
+    px(bx + 5, bodyY + 1, 6,  bodyH - 2, colors.belly);
+
+    // ── 尾巴 ──
+    if (isSleep) {
+      // 睡眠：尾巴弯曲包住身体
+      px(bx + 14, bodyY + 1, 2, 1, colors.body);
+      px(bx + 15, bodyY + 2, 1, 2, colors.body);
+      px(bx + 13, bodyY + 4, 3, 1, colors.body);
+    } else if (isSit) {
+      // 坐下：尾巴竖起
+      px(bx + 14, bodyY,     1, 4, colors.body);
+      px(bx + 15, bodyY - 1, 1, 2, colors.body);
+    } else {
+      // 行走/站立：尾巴摇摆
+      const tailOff = f === 0 ? 0 : -1;
+      px(bx + 14, bodyY + 1 + tailOff, 1, 3, colors.body);
+      px(bx + 15, bodyY + tailOff,     1, 2, colors.body);
+    }
+
+    // ── 腿 ──
+    if (!isSleep && !isSit && !isAir) {
+      // 前腿
+      px(bx + 3, bodyY + bodyH,     2, 2 + legOff,       colors.body);
+      px(bx + 11, bodyY + bodyH,    2, 2 + (1 - legOff), colors.body);
+      // 后腿
+      px(bx + 3, bodyY + bodyH + 1 + legOff,       2, 1, colors.outline);
+      px(bx + 11, bodyY + bodyH + 1 + (1-legOff),  2, 1, colors.outline);
+    } else if (isSit) {
+      // 坐下：腿折叠在前
+      px(bx + 3,  bodyY + bodyH, 3, 2, colors.body);
+      px(bx + 10, bodyY + bodyH, 3, 2, colors.body);
+    } else if (isAir) {
+      // 跳跃：腿收起
+      px(bx + 3,  bodyY + bodyH, 2, 1, colors.body);
+      px(bx + 11, bodyY + bodyH, 2, 1, colors.body);
+    } else if (isSleep) {
+      // 睡眠：腿平铺
+      px(bx + 2, bodyY + bodyH, 5, 2, colors.body);
+      px(bx + 9, bodyY + bodyH, 4, 2, colors.body);
+    }
+
+    // ── 睡眠 zzz ──
+    if (isSleep && this.frame % 4 < 2) {
+      ctx.fillStyle = colors.inner;
+      ctx.font = `${S * 2}px monospace`;
+      ctx.fillText('z', (bx + 16) * S, (by + 4) * S);
+      if (this.frame % 8 < 4) {
+        ctx.fillText('z', (bx + 18) * S, (by + 2) * S);
+      }
+    }
+
+    ctx.restore();
+
+    // ── 地面阴影 ──
+    if (!isAir) {
+      ctx.save();
+      ctx.fillStyle = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
+      ctx.beginPath();
+      ctx.ellipse(
+        (this.x + this.CAT_W / 2) * S,
+        (this.groundY + this.CAT_H + 2) * S,
+        this.CAT_W * S * 0.5,
+        2 * S,
+        0, 0, Math.PI * 2
+      );
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // ── 更新气泡位置（跟随猫） ──
+    const catCenterX = (this.x + this.CAT_W / 2) * S;
+    const catTopY = this.y * S;
+    this.bubble.style.left = `${catCenterX}px`;
+    this.bubble.style.bottom = `${this.canvas.height - catTopY + 4}px`;
+  }
+}
+
