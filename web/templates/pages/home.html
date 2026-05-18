@@ -100,7 +100,7 @@
       <section class="sidebar-panel">
         <h3>归档</h3>
         <div class="sidebar-list">
-          {{range .Archives}}<a href="/archives"><strong>{{.Year}}-{{printf "%02d" .Month}}</strong><span>{{.Count}} 篇</span></a>{{end}}
+          {{range .Archives}}<a href="/archives?year={{.Year}}&month={{printf "%02d" .Month}}"><strong>{{.Year}}-{{printf "%02d" .Month}}</strong><span>{{.Count}} 篇</span></a>{{end}}
         </div>
       </section>
     </aside>

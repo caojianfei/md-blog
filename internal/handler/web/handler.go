@@ -2,6 +2,7 @@ package web
 
 import (
 	"encoding/xml"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -138,10 +139,33 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Archives(w http.ResponseWriter, r *http.Request) {
+	yearStr := r.URL.Query().Get("year")
+	monthStr := r.URL.Query().Get("month")
+
 	archives, _ := h.c.Article.Archives()
 	data := h.baseData("归档", r.URL.Path, "文章归档", "归档")
 	data.Archives = archives
 	data.ArchiveCount = len(archives)
+
+	if yearStr != "" && monthStr != "" {
+		year, _ := strconv.Atoi(yearStr)
+		month, _ := strconv.Atoi(monthStr)
+
+		page := parsePage(r)
+		items, total, _ := h.c.Article.List(repository.ArticleFilter{
+			OnlyPublic: true,
+			Year:       year,
+			Month:      month,
+			Page:       page,
+			PageSize:   10,
+		})
+
+		data.Articles = items
+		data.CurrentPage = page
+		data.TotalPages = totalPages(total, 10)
+		data.Query = fmt.Sprintf("%d-%02d", year, month)
+	}
+
 	h.c.Renderer.Render(w, "archives", data, 0)
 }
 

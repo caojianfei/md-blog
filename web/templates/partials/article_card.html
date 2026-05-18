@@ -4,14 +4,13 @@
   <div>
     <h2 class="article-row__title"><a href="/posts/{{pathEscape .Slug}}">{{.Title}}</a></h2>
     <p class="article-row__summary">{{.Excerpt}}</p>
-  </div>
-  <div class="article-row__meta">
-    {{if .Category}}<a class="article-row__category" href="/categories/{{pathEscape .Category.Slug}}">{{.Category.Name}}</a>{{end}}
-    {{if .Tags}}
-    <div class="article-row__tags">
-      {{range .Tags}}<a class="tag-chip" href="/tags/{{pathEscape .Slug}}"># {{.Name}}</a>{{end}}
+    <div class="article-row__meta">
+      {{if .Tags}}
+      <div class="article-row__tags">
+        {{range .Tags}}<a class="tag-chip" href="/tags/{{pathEscape .Slug}}"># {{.Name}}</a>{{end}}
+      </div>
+      {{end}}
     </div>
-    {{end}}
   </div>
 </article>
 {{end}}

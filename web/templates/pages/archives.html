@@ -11,7 +11,7 @@
     <h2>Monthly Buckets</h2>
     <div class="archive-timeline">
       {{range .Archives}}
-      <a class="archive-item" href="/archives">
+      <a class="archive-item {{if eq $.Query (printf "%d-%02d" .Year .Month)}}is-active{{end}}" href="/archives?year={{.Year}}&month={{printf "%02d" .Month}}">
         <time>{{.Year}}-{{printf "%02d" .Month}}</time>
         <strong>{{.Count}} 篇</strong>
         <span>published entries</span>
@@ -19,5 +19,26 @@
       {{end}}
     </div>
   </div>
+
+  {{if .Query}}
+  <div class="content-grid__header" style="margin-top: 3rem; margin-bottom: 1.5rem;">
+    <span class="eyebrow">Archive Posts</span>
+    <h2 class="section-heading">{{.Query}}</h2>
+  </div>
+
+  {{if .Articles}}
+  <div class="article-list">
+    {{range .Articles}}{{template "article_card" .}}{{end}}
+  </div>
+  {{else}}
+  <div class="empty-state">该归档下暂无文章。</div>
+  {{end}}
+
+  <div class="pagination">
+    {{if gt .CurrentPage 1}}<a href="/archives?year={{index (split .Query "-") 0}}&month={{index (split .Query "-") 1}}&page={{dec .CurrentPage}}">上一页</a>{{end}}
+    <span>第 {{.CurrentPage}} / {{.TotalPages}} 页</span>
+    {{if lt .CurrentPage .TotalPages}}<a href="/archives?year={{index (split .Query "-") 0}}&month={{index (split .Query "-") 1}}&page={{inc .CurrentPage}}">下一页</a>{{end}}
+  </div>
+  {{end}}
 </section>
 {{end}}

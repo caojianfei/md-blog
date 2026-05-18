@@ -14,6 +14,8 @@ type ArticleFilter struct {
 	Status     string
 	CategoryID uint
 	TagID      uint
+	Year       int
+	Month      int
 	Page       int
 	PageSize   int
 	OnlyPublic bool
@@ -99,6 +101,15 @@ func (r *ArticleRepository) List(filter ArticleFilter) ([]model.Article, int64, 
 	}
 	if filter.TagID > 0 {
 		tx = tx.Joins("JOIN article_tags at ON at.article_id = articles.id").Where("at.tag_id = ?", filter.TagID)
+	}
+	if filter.Year > 0 && filter.Month > 0 {
+		// Use sqlite-compatible or generic approach.
+		// Actually gorm abstract this, but depending on db we might need string formatting.
+		// Since it's sqlite, we can use strftime('%Y-%m', published_at) = 'YYYY-MM'
+		// Or we can use range query: published_at >= startOfMonth AND published_at < startOfNextMonth
+		startOfMonth := time.Date(filter.Year, time.Month(filter.Month), 1, 0, 0, 0, 0, time.Local)
+		startOfNextMonth := startOfMonth.AddDate(0, 1, 0)
+		tx = tx.Where("published_at >= ? AND published_at < ?", startOfMonth, startOfNextMonth)
 	}
 	if strings.TrimSpace(filter.Query) != "" {
 		q := "%" + strings.TrimSpace(filter.Query) + "%"
