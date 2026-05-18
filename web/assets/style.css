@@ -501,14 +501,17 @@ input {
   display: flex;
   flex-direction: column;
   padding: 16px;
+  height: 300px;
   min-height: 300px;
-  max-height: 400px;
-  overflow-y: auto;
+  max-height: 300px;
+  overflow: hidden;
 }
 
 .terminal-output {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .terminal-line {
@@ -1600,4 +1603,3 @@ html[data-theme="dark"] .preview-banner {
 .pixel-cat-bubble.is-visible {
   opacity: 1;
 }
-
