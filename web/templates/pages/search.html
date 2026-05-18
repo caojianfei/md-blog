@@ -1,4 +1,22 @@
 {{define "search"}}{{template "base" .}}{{end}}
 {{define "content"}}
-<section class="container" style="padding: 40px 0 48px;"><div class="card"><h1>搜索</h1><form class="search-form" action="/search" method="get"><input type="search" name="q" value="{{.Query}}" placeholder="{{.Site.SearchPlaceholder}}"><button class="button" type="submit">搜索</button></form></div>{{if .Articles}}{{range .Articles}}{{template "article_card" .}}{{end}}{{else}}<div class="card empty">没有找到与“{{.Query}}”相关的文章。</div>{{end}}</section>
+<section class="container page-shell">
+  <div class="page-panel">
+    <span class="eyebrow">Search Index</span>
+    <h1 class="page-heading">搜索</h1>
+    <p class="page-description">按标题、摘要和正文查找内容，结果会沿用首页的技术流式列表。</p>
+    <form class="search-form" action="/search" method="get">
+      <input type="search" name="q" value="{{.Query}}" placeholder="{{.Site.SearchPlaceholder}}">
+      <button class="button" type="submit">重新搜索</button>
+    </form>
+  </div>
+
+  {{if .Articles}}
+  <div class="article-list">
+    {{range .Articles}}{{template "article_card" .}}{{end}}
+  </div>
+  {{else}}
+  <div class="empty-state">没有找到与“{{.Query}}”相关的文章。</div>
+  {{end}}
+</section>
 {{end}}

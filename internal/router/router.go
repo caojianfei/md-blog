@@ -44,6 +44,7 @@ func New(c *appcontainer.Container) http.Handler {
 			guarded.Get("/articles", api.ListArticles)
 			guarded.Post("/articles", api.SaveArticle)
 			guarded.Get("/articles/{id}", api.GetArticle)
+			guarded.Get("/preview-config", api.PreviewConfig)
 			guarded.Post("/articles/{id}/status", api.UpdateArticleStatus)
 			guarded.Post("/articles/preview", api.PreviewMarkdown)
 			guarded.Get("/categories", api.ListCategories)
@@ -72,6 +73,13 @@ func New(c *appcontainer.Container) http.Handler {
 	r.Get("/robots.txt", web.Robots)
 	r.Get("/admin", serveAdmin(c.AdminFS))
 	r.Get("/admin/*", serveAdmin(c.AdminFS))
+
+	r.Route("/api/terminal", func(terminalRouter chi.Router) {
+		terminalRouter.Get("/articles", api.TerminalArticles)
+		terminalRouter.Get("/categories", api.TerminalCategories)
+		terminalRouter.Get("/tags", api.TerminalTags)
+	})
+
 	return r
 }
 

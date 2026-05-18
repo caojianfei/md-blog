@@ -404,6 +404,10 @@ const saveArticle = async (status = editor.status) => {
       body: JSON.stringify(payload),
     });
 
+    // 保存成功后清除草稿缓存
+    const draftKey = `draft:${editor.id || "new"}`;
+    localStorage.removeItem(draftKey);
+
     Object.assign(editor, {
       id: data.id,
       title: data.title,
@@ -419,9 +423,7 @@ const saveArticle = async (status = editor.status) => {
     });
 
     alert(status === "published" ? "文章已发布" : "草稿已保存");
-    if (!isEdit.value) {
-      router.replace(`/articles/edit/${data.id}`);
-    }
+    router.replace("/articles");
   } catch (error) {
     alert(error.message || "保存失败");
   }
@@ -443,7 +445,11 @@ onMounted(async () => {
   if (!isEdit.value) {
     const draft = localStorage.getItem("draft:new");
     if (draft && !editor.content) {
-      editor.content = draft;
+      if (confirm("检测到未保存的草稿内容，是否恢复？")) {
+        editor.content = draft;
+      } else {
+        localStorage.removeItem("draft:new");
+      }
     }
   }
 });

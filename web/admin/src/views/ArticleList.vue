@@ -2,14 +2,15 @@
 import { ref, reactive, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { request } from "../utils/request";
-import { 
-  Plus, 
-  Search, 
-  RefreshCw, 
-  Edit, 
-  Eye, 
+import {
+  Plus,
+  Search,
+  RefreshCw,
+  Edit,
+  Eye,
   EyeOff,
-  Filter
+  Filter,
+  ExternalLink
 } from "lucide-vue-next";
 
 const router = useRouter();
@@ -21,6 +22,7 @@ const tags = ref([]);
 const filter = reactive({ q: "", status: "", categoryId: "", tagId: "", page: 1, pageSize: 10 });
 const isLoading = ref(false);
 const showFilters = ref(false); // For mobile
+const previewKey = ref("");
 
 const loadAll = async () => {
   isLoading.value = true;
@@ -59,13 +61,29 @@ const openEditor = (row = null) => {
   }
 };
 
+const viewArticle = (row) => {
+  if (row.status === "published") {
+    window.open(`/posts/${row.slug}`, "_blank");
+  } else {
+    window.open(`/posts/${row.slug}?preview_key=${previewKey.value}`, "_blank");
+  }
+};
+
 const formatDate = (dateString) => {
   if (!dateString) return '-';
   const date = new Date(dateString);
   return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
 };
 
-onMounted(loadAll);
+onMounted(async () => {
+  await loadAll();
+  try {
+    const config = await request("/api/admin/preview-config");
+    previewKey.value = config.previewKey || "";
+  } catch {
+    // preview will not work, but the page still functions
+  }
+});
 </script>
 
 <template>
@@ -191,7 +209,14 @@ onMounted(loadAll);
               </td>
               <td class="px-6 py-4 text-right">
                 <div class="flex items-center justify-end gap-2">
-                  <button 
+                  <button
+                    @click="viewArticle(row)"
+                    class="p-2 text-zinc-500 hover:text-green-600 dark:text-zinc-400 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/10 rounded-lg transition-colors"
+                    :title="row.status === 'published' ? '查看文章' : '预览草稿'"
+                  >
+                    <ExternalLink class="w-4 h-4" />
+                  </button>
+                  <button
                     @click="openEditor(row)"
                     class="p-2 text-zinc-500 hover:text-blue-600 dark:text-zinc-400 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors"
                     title="编辑"

@@ -2,6 +2,7 @@ package web
 
 import (
 	"encoding/xml"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -9,6 +10,7 @@ import (
 	appcontainer "github.com/cybernote/md-blog/internal/container"
 	"github.com/cybernote/md-blog/internal/model"
 	"github.com/cybernote/md-blog/internal/repository"
+	markdownSvc "github.com/cybernote/md-blog/internal/service/markdown"
 	seoSvc "github.com/cybernote/md-blog/internal/service/seo"
 	"github.com/go-chi/chi/v5"
 )
@@ -22,17 +24,22 @@ type PageData struct {
 	Meta            seoSvc.Meta
 	Articles        []model.Article
 	Article         *model.Article
+	Headings        []markdownSvc.Heading
 	Categories      []model.Category
 	Tags            []model.Tag
 	Archives        []repository.ArchiveItem
 	CurrentPage     int
 	TotalPages      int
+	Path            string
 	Query           string
 	CurrentTag      *model.Tag
 	CurrentCategory *model.Category
 	PrevArticle     *model.Article
 	NextArticle     *model.Article
 	AboutHTML       string
+	PublishedCount  int64
+	ArchiveCount    int
+	IsPreview       bool
 }
 
 func New(c *appcontainer.Container) *Handler { return &Handler{c: c} }
@@ -48,16 +55,42 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Article(w http.ResponseWriter, r *http.Request) {
-	article, err := h.c.Article.FindBySlug(chi.URLParam(r, "slug"))
-	if err != nil || article.Status != model.ArticleStatusPublished {
+	slug := chi.URLParam(r, "slug")
+	article, err := h.c.Article.FindBySlug(slug)
+	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
+
+	isPreview := false
+	if previewKey := r.URL.Query().Get("preview_key"); previewKey != "" {
+		if previewKey != h.c.Config.App.PreviewSecret {
+			http.NotFound(w, r)
+			return
+		}
+		ok, _, authErr := h.c.Auth.CurrentUser(r)
+		if authErr != nil || !ok {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		isPreview = true
+	} else {
+		if article.Status != model.ArticleStatusPublished {
+			http.NotFound(w, r)
+			return
+		}
+	}
+
 	prev, next, _ := h.c.Article.PrevNext(article)
 	data := h.baseData(article.Title, r.URL.Path, article.SEODescription, article.SEOKeywords)
 	data.Article = article
 	data.PrevArticle = prev
 	data.NextArticle = next
+	data.IsPreview = isPreview
+	if rendered, renderErr := h.c.Markdown.Render(article.Content); renderErr == nil {
+		data.Article.HTMLContent = rendered.HTML
+		data.Headings = rendered.Headings
+	}
 	h.c.Renderer.Render(w, "article", data, 0)
 }
 
@@ -106,16 +139,47 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Archives(w http.ResponseWriter, r *http.Request) {
+	yearStr := r.URL.Query().Get("year")
+	monthStr := r.URL.Query().Get("month")
+
 	archives, _ := h.c.Article.Archives()
 	data := h.baseData("归档", r.URL.Path, "文章归档", "归档")
 	data.Archives = archives
+	data.ArchiveCount = len(archives)
+
+	if yearStr != "" && monthStr != "" {
+		year, _ := strconv.Atoi(yearStr)
+		month, _ := strconv.Atoi(monthStr)
+
+		page := parsePage(r)
+		items, total, _ := h.c.Article.List(repository.ArticleFilter{
+			OnlyPublic: true,
+			Year:       year,
+			Month:      month,
+			Page:       page,
+			PageSize:   10,
+		})
+
+		data.Articles = items
+		data.CurrentPage = page
+		data.TotalPages = totalPages(total, 10)
+		data.Query = fmt.Sprintf("%d-%02d", year, month)
+	}
+
 	h.c.Renderer.Render(w, "archives", data, 0)
 }
 
 func (h *Handler) About(w http.ResponseWriter, r *http.Request) {
 	data := h.baseData("关于", r.URL.Path, "关于本站", "关于")
 	rendered, _ := h.c.Markdown.Render(data.Site.AboutContent)
-	data.AboutHTML = rendered.HTML
+	if rendered != nil {
+		data.AboutHTML = rendered.HTML
+	}
+	archives, _ := h.c.Article.Archives()
+	_, total, _ := h.c.Article.List(repository.ArticleFilter{OnlyPublic: true, Page: 1, PageSize: 1})
+	data.Archives = archives
+	data.ArchiveCount = len(archives)
+	data.PublishedCount = total
 	h.c.Renderer.Render(w, "about", data, 0)
 }
 
@@ -139,7 +203,8 @@ func (h *Handler) RSS(w http.ResponseWriter, _ *http.Request) {
 		Channel Channel  `xml:"channel"`
 	}
 
-	feed := RSS{Version: "2.0", Channel: Channel{Title: h.c.Config.App.Name, Link: h.c.Config.App.BaseURL, Description: h.c.Config.SEO.DefaultDescription}}
+	site, _ := h.c.SettingRepo.Get()
+	feed := RSS{Version: "2.0", Channel: Channel{Title: h.c.Config.App.Name, Link: h.c.Config.App.BaseURL, Description: site.SiteDescription}}
 	for _, article := range items {
 		feed.Channel.Items = append(feed.Channel.Items, Item{Title: article.Title, Link: h.c.Config.App.BaseURL + "/posts/" + url.PathEscape(article.Slug), Description: article.Excerpt})
 	}
@@ -178,7 +243,16 @@ func (h *Handler) baseData(title, path, description, keywords string) PageData {
 	site, _ := h.c.SettingRepo.Get()
 	categories, _ := h.c.CategoryRepo.List()
 	tags, _ := h.c.TagRepo.List()
-	return PageData{Site: site, Categories: categories, Tags: tags, Meta: h.c.SEO.Build(title, description, keywords, path)}
+	archives, _ := h.c.Article.Archives()
+	return PageData{
+		Site:         site,
+		Categories:   categories,
+		Tags:         tags,
+		Archives:     archives,
+		ArchiveCount: len(archives),
+		Path:         path,
+		Meta:         h.c.SEO.Build(title, description, keywords, path),
+	}
 }
 
 func parsePage(r *http.Request) int {

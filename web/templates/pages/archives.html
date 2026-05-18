@@ -1,4 +1,44 @@
 {{define "archives"}}{{template "base" .}}{{end}}
 {{define "content"}}
-<section class="container" style="padding: 40px 0 48px;"><div class="card"><h1>归档</h1><div class="chip-list">{{range .Archives}}<span class="chip">{{.Year}}-{{.Month}} · {{.Count}} 篇</span>{{end}}</div></div></section>
+<section class="container page-shell">
+  <div class="page-panel">
+    <span class="eyebrow">Archive Timeline</span>
+    <h1 class="page-heading">归档</h1>
+    <p class="page-description">按月回看写作节奏，保持和首页一致的技术信息架构。</p>
+  </div>
+
+  <div class="archive-list">
+    <h2>Monthly Buckets</h2>
+    <div class="archive-timeline">
+      {{range .Archives}}
+      <a class="archive-item {{if eq $.Query (printf "%d-%02d" .Year .Month)}}is-active{{end}}" href="/archives?year={{.Year}}&month={{printf "%02d" .Month}}">
+        <time>{{.Year}}-{{printf "%02d" .Month}}</time>
+        <strong>{{.Count}} 篇</strong>
+        <span>published entries</span>
+      </a>
+      {{end}}
+    </div>
+  </div>
+
+  {{if .Query}}
+  <div class="content-grid__header" style="margin-top: 3rem; margin-bottom: 1.5rem;">
+    <span class="eyebrow">Archive Posts</span>
+    <h2 class="section-heading">{{.Query}}</h2>
+  </div>
+
+  {{if .Articles}}
+  <div class="article-list">
+    {{range .Articles}}{{template "article_card" .}}{{end}}
+  </div>
+  {{else}}
+  <div class="empty-state">该归档下暂无文章。</div>
+  {{end}}
+
+  <div class="pagination">
+    {{if gt .CurrentPage 1}}<a href="/archives?year={{index (split .Query "-") 0}}&month={{index (split .Query "-") 1}}&page={{dec .CurrentPage}}">上一页</a>{{end}}
+    <span>第 {{.CurrentPage}} / {{.TotalPages}} 页</span>
+    {{if lt .CurrentPage .TotalPages}}<a href="/archives?year={{index (split .Query "-") 0}}&month={{index (split .Query "-") 1}}&page={{inc .CurrentPage}}">下一页</a>{{end}}
+  </div>
+  {{end}}
+</section>
 {{end}}

@@ -1,18 +1,109 @@
 {{define "home"}}{{template "base" .}}{{end}}
 {{define "content"}}
-<section class="hero"><div class="container"><div class="hero-card"><h1>{{.Site.HeroTitle}}</h1><p>{{.Site.HeroDescription}}</p><form class="search-form" action="/search" method="get"><input type="search" name="q" placeholder="{{.Site.SearchPlaceholder}}"><button class="button" type="submit">搜索</button></form></div></div></section>
-<section class="container main-grid">
-  <div>
-    {{if .Articles}}{{range .Articles}}{{template "article_card" .}}{{end}}{{else}}<div class="card empty">还没有已发布的文章。</div>{{end}}
-    <div class="pagination">
-      {{if gt .CurrentPage 1}}<a class="chip" href="/?page={{dec .CurrentPage}}">上一页</a>{{end}}
-      <span class="muted">第 {{.CurrentPage}} / {{.TotalPages}} 页</span>
-      {{if lt .CurrentPage .TotalPages}}<a class="chip" href="/?page={{inc .CurrentPage}}">下一页</a>{{end}}
+<section class="container section-stack">
+  <div class="hero-grid">
+    <section class="hero-panel">
+      <span class="eyebrow">High-End Minimalist Tech Aesthetics</span>
+      <h1>{{.Site.HeroTitle}}</h1>
+      <p>{{.Site.HeroDescription}}</p>
+      <div class="pixel-cat-stage" data-pixel-cat>
+        <canvas class="pixel-cat-canvas"></canvas>
+        <div class="pixel-cat-bubble" data-cat-bubble></div>
+      </div>
+    </section>
+    <aside class="terminal-panel" data-terminal>
+      <div class="terminal-header">
+        <span class="terminal-dot"></span>
+        <span class="terminal-dot"></span>
+        <span class="terminal-dot"></span>
+        <span class="terminal-title">live session</span>
+      </div>
+      <div class="terminal-body">
+        <div class="terminal-output" data-terminal-output>
+          <div class="terminal-line">
+            <span class="terminal-prompt">~/{{.Site.SiteName}} $</span>
+            <span class="terminal-welcome">Welcome! 输入 help 查看可用命令</span>
+          </div>
+        </div>
+        <div class="terminal-input-line">
+          <span class="terminal-prompt">~/{{.Site.SiteName}} $</span>
+          <input type="text" class="terminal-input" data-terminal-input spellcheck="false" autocomplete="off" placeholder="输入命令...">
+        </div>
+      </div>
+      <div class="terminal-data" style="display:none"
+        data-site-name="{{.Site.SiteName}}"
+        data-articles-count="{{len .Articles}}"
+        data-categories-count="{{len .Categories}}"
+        data-tags-count="{{len .Tags}}"
+        data-archives-count="{{.ArchiveCount}}"
+        data-theme="{{if .Site.ThemeDefault}}{{.Site.ThemeDefault}}{{else}}system{{end}}"
+      ></div>
+    </aside>
+  </div>
+
+  <div class="summary-strip">
+    <span class="eyebrow">System Entry</span>
+    <div class="summary-grid">
+      <div class="stat-card">
+        <span class="stat-card__label">current page</span>
+        <span class="stat-card__value">{{.CurrentPage}} / {{.TotalPages}}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-card__label">category index</span>
+        <span class="stat-card__value">{{len .Categories}}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-card__label">tag index</span>
+        <span class="stat-card__value">{{len .Tags}}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-card__label">archive buckets</span>
+        <span class="stat-card__value">{{.ArchiveCount}}</span>
+      </div>
     </div>
   </div>
-  <aside class="sidebar">
-    <section class="card"><h3>分类</h3><div class="chip-list">{{range .Categories}}<a class="chip" href="/categories/{{pathEscape .Slug}}">{{.Name}}</a>{{end}}</div></section>
-    <section class="card"><h3>标签</h3><div class="chip-list">{{range .Tags}}<a class="chip" href="/tags/{{pathEscape .Slug}}"># {{.Name}}</a>{{end}}</div></section>
-  </aside>
+
+  <div class="content-grid">
+    <div class="content-grid__header">
+      <span class="eyebrow">Latest Posts</span>
+      <h2 class="section-heading">Flow List</h2>
+    </div>
+
+    <section class="section-stack content-grid__main">
+      {{if .Articles}}
+      <div class="article-list">
+        {{range .Articles}}{{template "article_card" .}}{{end}}
+      </div>
+      {{else}}
+      <div class="empty-state">还没有已发布的文章。</div>
+      {{end}}
+      <div class="pagination">
+        {{if gt .CurrentPage 1}}<a href="/?page={{dec .CurrentPage}}">上一页</a>{{end}}
+        <span>第 {{.CurrentPage}} / {{.TotalPages}} 页</span>
+        {{if lt .CurrentPage .TotalPages}}<a href="/?page={{inc .CurrentPage}}">下一页</a>{{end}}
+      </div>
+    </section>
+
+    <aside class="sidebar">
+      <section class="sidebar-panel">
+        <h3>分类</h3>
+        <div class="sidebar-list">
+          {{range .Categories}}<a href="/categories/{{pathEscape .Slug}}"><strong>{{.Name}}</strong><span>{{.Description}}</span></a>{{end}}
+        </div>
+      </section>
+      <section class="sidebar-panel">
+        <h3>标签</h3>
+        <div class="tag-cloud">
+          {{range .Tags}}<a class="tag-chip" href="/tags/{{pathEscape .Slug}}"># {{.Name}}</a>{{end}}
+        </div>
+      </section>
+      <section class="sidebar-panel">
+        <h3>归档</h3>
+        <div class="sidebar-list">
+          {{range .Archives}}<a href="/archives?year={{.Year}}&month={{printf "%02d" .Month}}"><strong>{{.Year}}-{{printf "%02d" .Month}}</strong><span>{{.Count}} 篇</span></a>{{end}}
+        </div>
+      </section>
+    </aside>
+  </div>
 </section>
 {{end}}

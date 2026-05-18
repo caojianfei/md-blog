@@ -1,12 +1,16 @@
 {{define "article_card"}}
-<article class="card">
-  <div class="post-meta">{{formatDate .PublishedAt "2006-01-02"}}{{if .Category}} · <a href="/categories/{{pathEscape .Category.Slug}}">{{.Category.Name}}</a>{{end}}</div>
-  <h2><a href="/posts/{{pathEscape .Slug}}">{{.Title}}</a></h2>
-  <p class="muted">{{.Excerpt}}</p>
-  {{if .Tags}}
-  <div class="chip-list">
-    {{range .Tags}}<a class="chip" href="/tags/{{pathEscape .Slug}}"># {{.Name}}</a>{{end}}
+<article class="article-row">
+  <div class="article-row__date">{{formatDate .PublishedAt "2006-01-02"}}</div>
+  <div>
+    <h2 class="article-row__title"><a href="/posts/{{pathEscape .Slug}}">{{.Title}}</a></h2>
+    <p class="article-row__summary">{{.Excerpt}}</p>
+    <div class="article-row__meta">
+      {{if .Tags}}
+      <div class="article-row__tags">
+        {{range .Tags}}<a class="tag-chip" href="/tags/{{pathEscape .Slug}}"># {{.Name}}</a>{{end}}
+      </div>
+      {{end}}
+    </div>
   </div>
-  {{end}}
 </article>
 {{end}}

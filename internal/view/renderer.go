@@ -29,6 +29,7 @@ func NewRenderer(templateFS fs.FS) (*Renderer, error) {
 		"pathEscape": func(value string) string {
 			return url.PathEscape(value)
 		},
+		"split": strings.Split,
 		"inc": func(v int) int { return v + 1 },
 		"dec": func(v int) int {
 			if v <= 1 {

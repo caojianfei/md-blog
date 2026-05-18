@@ -12,8 +12,6 @@ type Config struct {
     Database DatabaseConfig
     Storage  StorageConfig
     Admin    AdminConfig
-    Theme    ThemeConfig
-    SEO      SEOConfig
 }
 
 type AppConfig struct {
@@ -23,6 +21,7 @@ type AppConfig struct {
     Env           string
     DataDir       string
     SessionSecret string
+    PreviewSecret string
     ReadTimeout   int
     WriteTimeout  int
 }
@@ -56,17 +55,6 @@ type AdminConfig struct {
     Password string
 }
 
-type ThemeConfig struct {
-    Default string
-}
-
-type SEOConfig struct {
-    DefaultTitle       string
-    DefaultDescription string
-    DefaultKeywords    string
-    DefaultCover       string
-}
-
 func Load() Config {
     dataDir := getEnv("APP_DATA_DIR", "./data")
     localUploadDir := getEnv("STORAGE_LOCAL_DIR", dataDir+"/uploads")
@@ -79,6 +67,7 @@ func Load() Config {
             Env:           getEnv("APP_ENV", "development"),
             DataDir:       dataDir,
             SessionSecret: getEnv("APP_SESSION_SECRET", "change-me-session-secret"),
+            PreviewSecret: getEnv("APP_PREVIEW_SECRET", ""),
             ReadTimeout:   getIntEnv("APP_READ_TIMEOUT", 15),
             WriteTimeout:  getIntEnv("APP_WRITE_TIMEOUT", 15),
         },
@@ -108,15 +97,6 @@ func Load() Config {
             Username: getEnv("ADMIN_USERNAME", "admin"),
             Password: getEnv("ADMIN_PASSWORD", "admin123456"),
         },
-        Theme: ThemeConfig{
-            Default: getEnv("THEME_DEFAULT", "system"),
-        },
-        SEO: SEOConfig{
-            DefaultTitle:       getEnv("SEO_DEFAULT_TITLE", "Cybernote Blog"),
-            DefaultDescription: getEnv("SEO_DEFAULT_DESCRIPTION", "A modern personal blog built with Go SSR and Vue admin."),
-            DefaultKeywords:    getEnv("SEO_DEFAULT_KEYWORDS", "blog,golang,vue,markdown"),
-            DefaultCover:       getEnv("SEO_DEFAULT_COVER", ""),
-        },
     }
 
     if err := cfg.Validate(); err != nil {
@@ -128,6 +108,9 @@ func Load() Config {
 func (c Config) Validate() error {
     if c.App.SessionSecret == "" {
         return fmt.Errorf("APP_SESSION_SECRET cannot be empty")
+    }
+    if c.App.PreviewSecret == "" {
+        return fmt.Errorf("APP_PREVIEW_SECRET cannot be empty")
     }
     if c.Database.Driver != "sqlite" && c.Database.Driver != "mysql" {
         return fmt.Errorf("unsupported DB_DRIVER: %s", c.Database.Driver)
