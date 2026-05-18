@@ -547,7 +547,7 @@ class PixelCat {
     this.mouseInStage = false;
 
     // 状态机
-    // states: idle | walk | sit | sleep | jump | run | scared
+    // states: idle | walk | sit | sleep | roll | run | scared
     this.state = 'idle';
     this.frame = 0;
     this.frameTick = 0;
@@ -561,11 +561,9 @@ class PixelCat {
     this.IDLE_TO_SIT = 180;   // ~3s → sit
     this.SIT_TO_SLEEP = 360;  // ~6s → sleep
 
-    // 跳跃参数
-    this.jumpVy = 0;
-    this.gravity = 0.3;
-    this.groundY = 0;
-    this.isJumping = false;
+    // roll 参数
+    this.rollTick = 0;
+    this.isRolling = false;
 
     // scared 计时
     this.scaredTick = 0;
@@ -615,9 +613,9 @@ class PixelCat {
     });
 
     this.stage.addEventListener('click', () => {
-      if (!this.isJumping) {
-        this.setState('jump');
-        const msgs = ['喵～', '(=｀ω´=)', '(=^･ω･^=)', '喵！', '(=^▽^=)'];
+      if (!this.isRolling) {
+        this.setState('roll');
+        const msgs = ['喵～', '(=｀ω´=)', '(=^･ω･^=)', '喵呜！', '(=^▽^=)'];
         this.showBubble(msgs[Math.floor(Math.random() * msgs.length)]);
       }
     });
@@ -632,9 +630,9 @@ class PixelCat {
     this.frame = 0;
     this.frameTick = 0;
     this.idleTick = 0;
-    if (s === 'jump') {
-      this.jumpVy = -5;
-      this.isJumping = true;
+    if (s === 'roll') {
+      this.rollTick = 0;
+      this.isRolling = true;
     }
     if (s === 'scared') {
       this.scaredTick = 0;
@@ -681,7 +679,7 @@ class PixelCat {
       case 'walk': this.updateWalk(); break;
       case 'sit':  this.updateSit();  break;
       case 'sleep':this.updateSleep();break;
-      case 'jump': this.updateJump(); break;
+      case 'roll': this.updateRoll(); break;
       case 'run':  this.updateRun();  break;
       case 'scared':this.updateScared();break;
     }
@@ -733,12 +731,11 @@ class PixelCat {
     // 呼吸循环，什么都不做，等事件唤醒
   }
 
-  updateJump() {
-    this.jumpVy += this.gravity;
-    this.y += this.jumpVy;
-    if (this.y >= this.groundY) {
-      this.y = this.groundY;
-      this.isJumping = false;
+  updateRoll() {
+    this.rollTick++;
+    // 撒娇翻滚持续约60帧
+    if (this.rollTick > 60) {
+      this.isRolling = false;
       this.setState('idle');
     }
   }
@@ -790,23 +787,35 @@ class PixelCat {
     const f = this.frame % 2;
     // 帧偏移：走路时腿上下交替
     const legOff = (this.state === 'walk' || this.state === 'run' || this.state === 'scared') ? (f === 0 ? 0 : 1) : 0;
-    // 跳跃时腿收起
-    const isAir = this.isJumping;
     // 睡眠时身体压扁
     const isSleep = this.state === 'sleep';
     // 坐下
     const isSit = this.state === 'sit';
+    // 翻滚时腿收起
+    const isRoll = this.state === 'roll';
 
     ctx.save();
+    
+    const bx = this.x;
+    const by = this.y;
+
+    // 翻滚旋转中心
+    if (isRoll) {
+      const cx = (bx + this.CAT_W / 2) * S;
+      const cy = (by + this.CAT_H / 2) * S;
+      ctx.translate(cx, cy);
+      // 左右摇晃翻滚
+      const angle = Math.sin(this.rollTick * 0.2) * Math.PI * 0.5;
+      ctx.rotate(angle);
+      ctx.translate(-cx, -cy);
+    }
+
     // 左右翻转
     if (this.facing === -1) {
       ctx.translate((this.x + this.CAT_W) * S, 0);
       ctx.scale(-1, 1);
       ctx.translate(-this.x * S, 0);
     }
-
-    const bx = this.x;
-    const by = this.y;
 
     // ── 耳朵 ──
     if (!isSleep) {
@@ -887,7 +896,7 @@ class PixelCat {
     }
 
     // ── 腿 ──
-    if (!isSleep && !isSit && !isAir) {
+    if (!isSleep && !isSit && !isRoll) {
       // 前腿
       px(bx + 3, bodyY + bodyH,     2, 2 + legOff,       colors.body);
       px(bx + 11, bodyY + bodyH,    2, 2 + (1 - legOff), colors.body);
@@ -898,8 +907,8 @@ class PixelCat {
       // 坐下：腿折叠在前
       px(bx + 3,  bodyY + bodyH, 3, 2, colors.body);
       px(bx + 10, bodyY + bodyH, 3, 2, colors.body);
-    } else if (isAir) {
-      // 跳跃：腿收起
+    } else if (isRoll) {
+      // 翻滚：腿收起
       px(bx + 3,  bodyY + bodyH, 2, 1, colors.body);
       px(bx + 11, bodyY + bodyH, 2, 1, colors.body);
     } else if (isSleep) {
@@ -921,8 +930,7 @@ class PixelCat {
     ctx.restore();
 
     // ── 地面阴影 ──
-    if (!isAir) {
-      ctx.save();
+    ctx.save();
       ctx.fillStyle = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
       ctx.beginPath();
       ctx.ellipse(
@@ -934,7 +942,6 @@ class PixelCat {
       );
       ctx.fill();
       ctx.restore();
-    }
 
     // ── 更新气泡位置（跟随猫） ──
     const catCenterX = (this.x + this.CAT_W / 2) * S;
