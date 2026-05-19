@@ -21,41 +21,63 @@
 
 项目采用“双层配置”：
 
-- 启动配置通过环境变量读取（`internal/config/config.go`）
+- 启动配置通过 YAML 配置文件读取（`internal/config/config.go`），并允许环境变量覆盖
 - 站点运行配置、预览密钥、上传限制、存储配置通过数据库中的后台设置维护
 
-没有强制 `.env` 文件。你可以直接在 shell 里导出变量。
+推荐从示例文件开始：
+
+```bash
+cp config.yaml.example config.yaml
+```
 
 ### 最小可用配置（本地开发）
 
-```bash
-export APP_ENV=development
-export APP_ADDR=:8080
-export APP_SESSION_SECRET=please-change-me
+```yaml
+app:
+  addr: ":8080"
+  env: "development"
+  data_dir: "./data"
+  session_secret: "please-change-me"
 
-export DB_DRIVER=sqlite
-export DB_SQLITE_PATH=./data/blog.db
-export DB_AUTO_MIGRATE=true
+database:
+  driver: "sqlite"
+  sqlite_path: "./data/blog.db"
+  auto_migrate: true
 
-export ADMIN_USERNAME=admin
-export ADMIN_PASSWORD=admin123456
+bootstrap_admin:
+  username: "admin"
+  password: "admin123456"
 ```
 
 ### 常用配置项
 
-| 变量名 | 默认值 | 说明 |
+| YAML 键名 | 默认值 | 说明 |
 | --- | --- | --- |
-| `APP_ADDR` | `:8080` | 服务监听地址 |
-| `APP_SESSION_SECRET` | `change-me-session-secret` | Session 签名密钥，生产环境必须修改 |
-| `APP_DATA_DIR` | `./data` | 数据目录 |
-| `DB_DRIVER` | `sqlite` | 数据库驱动：`sqlite` 或 `mysql` |
-| `DB_SQLITE_PATH` | `./data/blog.db` | SQLite 文件路径 |
-| `DB_MYSQL_DSN` | `root:root@tcp(127.0.0.1:3306)/md_blog?...` | MySQL 连接串（当 `DB_DRIVER=mysql`） |
-| `DB_AUTO_MIGRATE` | `true` | 启动时自动迁移并初始化数据 |
-| `ADMIN_USERNAME` | `admin` | 初始管理员用户名 |
-| `ADMIN_PASSWORD` | `admin123456` | 初始管理员密码（仅首次种子生效） |
+| `app.addr` | `:8080` | 服务监听地址 |
+| `app.session_secret` | `change-me-session-secret` | Session 签名密钥，生产环境必须修改 |
+| `app.data_dir` | `./data` | 数据目录 |
+| `database.driver` | `sqlite` | 数据库驱动：`sqlite` 或 `mysql` |
+| `database.sqlite_path` | `./data/blog.db` | SQLite 文件路径 |
+| `database.mysql_dsn` | `root:root@tcp(127.0.0.1:3306)/md_blog?...` | MySQL 连接串（当 `database.driver=mysql`） |
+| `database.auto_migrate` | `true` | 启动时自动迁移并初始化数据 |
+| `bootstrap_admin.username` | `admin` | 初始管理员用户名 |
+| `bootstrap_admin.password` | `admin123456` | 初始管理员密码（仅首次种子生效） |
 
-以下配置会在首次启动时回填到数据库后台设置，后续以后台保存值为准：
+### 环境变量覆盖
+
+配置文件是主配置来源，但以下环境变量仍然会覆盖同名项，便于容器部署和密钥注入：
+
+```bash
+export APP_ADDR=:9090
+export APP_SESSION_SECRET=please-change-me
+export DB_DRIVER=sqlite
+export DB_SQLITE_PATH=./data/blog.db
+export DB_AUTO_MIGRATE=true
+export ADMIN_USERNAME=admin
+export ADMIN_PASSWORD=admin123456
+```
+
+以下配置会在首次启动时回填到数据库后台设置，后续以后台保存值为准；这一层仍沿用现有环境变量逻辑，本次未纳入 `config.yaml`：
 
 - `APP_NAME`
 - `APP_BASE_URL`
@@ -78,8 +100,16 @@ cd ../..
 ### 2) 启动后端服务
 
 ```bash
-go run ./cmd/server
+go run ./cmd/server --config ./config.yaml
 ```
+
+也支持短参数：
+
+```bash
+go run ./cmd/server -c ./config.yaml
+```
+
+如果项目根目录下存在 `./config.yaml`，则不传参数也会自动加载；若文件不存在，则回退到“代码默认值 + 环境变量覆盖”模式。
 
 启动后访问：
 
@@ -90,6 +120,12 @@ go run ./cmd/server
 ## 如何开发
 
 ### 后端开发
+
+```bash
+go run ./cmd/server --config ./config.yaml
+```
+
+如果你只依赖默认路径，也可以直接执行：
 
 ```bash
 go run ./cmd/server

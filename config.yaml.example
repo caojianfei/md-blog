@@ -1,0 +1,20 @@
+app:
+  addr: ":8080"
+  env: "development"
+  data_dir: "./data"
+  session_secret: "please-change-me"
+  read_timeout: 15
+  write_timeout: 15
+
+database:
+  driver: "sqlite"
+  sqlite_path: "./data/blog.db"
+  mysql_dsn: "root:root@tcp(127.0.0.1:3306)/md_blog?charset=utf8mb4&parseTime=True&loc=Local"
+  auto_migrate: true
+  max_open_conns: 10
+  max_idle_conns: 5
+  conn_max_lifetime: 300
+
+bootstrap_admin:
+  username: "admin"
+  password: "admin123456"
