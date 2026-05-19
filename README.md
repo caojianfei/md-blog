@@ -19,23 +19,23 @@
 
 ## 如何配置
 
-项目通过环境变量读取配置（`internal/config/config.go`），没有强制 `.env` 文件。你可以直接在 shell 里导出变量。
+项目采用“双层配置”：
+
+- 启动配置通过环境变量读取（`internal/config/config.go`）
+- 站点运行配置、预览密钥、上传限制、存储配置通过数据库中的后台设置维护
+
+没有强制 `.env` 文件。你可以直接在 shell 里导出变量。
 
 ### 最小可用配置（本地开发）
 
 ```bash
 export APP_ENV=development
 export APP_ADDR=:8080
-export APP_BASE_URL=http://localhost:8080
 export APP_SESSION_SECRET=please-change-me
 
 export DB_DRIVER=sqlite
 export DB_SQLITE_PATH=./data/blog.db
 export DB_AUTO_MIGRATE=true
-
-export STORAGE_DRIVER=local
-export STORAGE_LOCAL_DIR=./data/uploads
-export STORAGE_LOCAL_BASE_URL=/uploads
 
 export ADMIN_USERNAME=admin
 export ADMIN_PASSWORD=admin123456
@@ -46,18 +46,21 @@ export ADMIN_PASSWORD=admin123456
 | 变量名 | 默认值 | 说明 |
 | --- | --- | --- |
 | `APP_ADDR` | `:8080` | 服务监听地址 |
-| `APP_BASE_URL` | `http://localhost:8080` | 站点基础地址 |
 | `APP_SESSION_SECRET` | `change-me-session-secret` | Session 签名密钥，生产环境必须修改 |
 | `APP_DATA_DIR` | `./data` | 数据目录 |
 | `DB_DRIVER` | `sqlite` | 数据库驱动：`sqlite` 或 `mysql` |
 | `DB_SQLITE_PATH` | `./data/blog.db` | SQLite 文件路径 |
 | `DB_MYSQL_DSN` | `root:root@tcp(127.0.0.1:3306)/md_blog?...` | MySQL 连接串（当 `DB_DRIVER=mysql`） |
 | `DB_AUTO_MIGRATE` | `true` | 启动时自动迁移并初始化数据 |
-| `STORAGE_DRIVER` | `local` | 存储驱动：`local` 或 `s3` |
-| `STORAGE_LOCAL_DIR` | `./data/uploads` | 本地上传目录 |
-| `STORAGE_MAX_UPLOAD_SIZE` | `8388608` | 单文件上传大小限制（字节） |
 | `ADMIN_USERNAME` | `admin` | 初始管理员用户名 |
 | `ADMIN_PASSWORD` | `admin123456` | 初始管理员密码（仅首次种子生效） |
+
+以下配置会在首次启动时回填到数据库后台设置，后续以后台保存值为准：
+
+- `APP_NAME`
+- `APP_BASE_URL`
+- `APP_PREVIEW_SECRET`
+- `STORAGE_*`
 
 ## 如何启动
 
@@ -131,4 +134,4 @@ Vite 默认地址：`http://localhost:5173`，并已代理：
 - 用户名：`ADMIN_USERNAME`（默认 `admin`）
 - 密码：`ADMIN_PASSWORD`（默认 `admin123456`）
 
-请在生产环境务必修改默认账号与 `APP_SESSION_SECRET`。
+请在生产环境务必修改默认账号与 `APP_SESSION_SECRET`，并在后台设置中更新站点地址、预览密钥与存储配置。

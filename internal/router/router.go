@@ -3,7 +3,9 @@ package router
 import (
 	"io/fs"
 	"net/http"
+	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	appcontainer "github.com/cybernote/md-blog/internal/container"
@@ -27,7 +29,7 @@ func New(c *appcontainer.Container) http.Handler {
 
 	assetServer := http.FileServer(http.FS(c.AssetFS))
 	r.Handle("/assets/*", http.StripPrefix("/assets/", assetServer))
-	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir(c.Config.Storage.LocalDir))))
+	r.Handle("/uploads/*", serveUploads(c))
 
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -56,6 +58,7 @@ func New(c *appcontainer.Container) http.Handler {
 			guarded.Delete("/tags/{id}", api.DeleteTag)
 			guarded.Get("/settings", api.GetSettings)
 			guarded.Post("/settings", api.SaveSettings)
+			guarded.Post("/account", api.UpdateAccount)
 			guarded.Get("/media", api.ListMedia)
 			guarded.Post("/media/upload", api.UploadMedia)
 			guarded.Delete("/media/{id}", api.DeleteMedia)
@@ -82,6 +85,42 @@ func New(c *appcontainer.Container) http.Handler {
 	})
 
 	return r
+}
+
+func serveUploads(c *appcontainer.Container) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resolved, err := c.Settings.Resolve()
+		if err != nil {
+			http.Error(w, "settings unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		if resolved.Storage.Driver != "local" {
+			http.NotFound(w, r)
+			return
+		}
+		if !strings.HasPrefix(r.URL.Path, resolved.Storage.LocalBaseURL+"/") && r.URL.Path != resolved.Storage.LocalBaseURL {
+			http.NotFound(w, r)
+			return
+		}
+		relative := strings.TrimPrefix(r.URL.Path, resolved.Storage.LocalBaseURL)
+		relative = strings.TrimPrefix(relative, "/")
+		if relative == "" {
+			http.NotFound(w, r)
+			return
+		}
+		target := filepath.Join(resolved.Storage.LocalDirAbs, filepath.FromSlash(relative))
+		cleanBase := filepath.Clean(resolved.Storage.LocalDirAbs)
+		cleanTarget := filepath.Clean(target)
+		if !strings.HasPrefix(cleanTarget, cleanBase+string(filepath.Separator)) && cleanTarget != cleanBase {
+			http.NotFound(w, r)
+			return
+		}
+		if _, err := os.Stat(cleanTarget); err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		http.ServeFile(w, r, cleanTarget)
+	})
 }
 
 func serveAdmin(adminFS fs.FS) http.HandlerFunc {

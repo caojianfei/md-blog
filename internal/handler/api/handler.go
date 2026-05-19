@@ -12,6 +12,7 @@ import (
 	appcontainer "github.com/cybernote/md-blog/internal/container"
 	"github.com/cybernote/md-blog/internal/model"
 	"github.com/cybernote/md-blog/internal/repository"
+	"github.com/cybernote/md-blog/internal/security"
 	articleSvc "github.com/cybernote/md-blog/internal/service/article"
 	"github.com/go-chi/chi/v5"
 	"gorm.io/gorm"
@@ -280,7 +281,7 @@ func (h *Handler) DeleteTag(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetSettings(w http.ResponseWriter, _ *http.Request) {
-	setting, err := h.c.SettingRepo.Get()
+	setting, err := h.c.Settings.Get()
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, response{Code: 500, Message: err.Error()})
 		return
@@ -289,25 +290,61 @@ func (h *Handler) GetSettings(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (h *Handler) SaveSettings(w http.ResponseWriter, r *http.Request) {
-	current, err := h.c.SettingRepo.Get()
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, response{Code: 500, Message: err.Error()})
-		return
-	}
 	var payload model.SiteSetting
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{Code: 400, Message: "invalid payload"})
 		return
 	}
-	payload.ID = current.ID
-	if strings.TrimSpace(payload.SiteName) == "" {
-		payload.SiteName = current.SiteName
-	}
-	if err := h.c.SettingRepo.Save(&payload); err != nil {
+	saved, err := h.c.Settings.Save(&payload)
+	if err != nil {
 		writeJSON(w, http.StatusBadRequest, response{Code: 400, Message: err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, response{Code: 0, Message: "ok", Data: payload})
+	writeJSON(w, http.StatusOK, response{Code: 0, Message: "ok", Data: saved})
+}
+
+func (h *Handler) UpdateAccount(w http.ResponseWriter, r *http.Request) {
+	ok, admin, err := h.c.Auth.CurrentUser(r)
+	if err != nil || !ok {
+		writeJSON(w, http.StatusUnauthorized, response{Code: 401, Message: "unauthorized"})
+		return
+	}
+	var payload struct {
+		Username        string `json:"username"`
+		NewPassword     string `json:"newPassword"`
+		ConfirmPassword string `json:"confirmPassword"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		writeJSON(w, http.StatusBadRequest, response{Code: 400, Message: "invalid payload"})
+		return
+	}
+	payload.Username = strings.TrimSpace(payload.Username)
+	if payload.Username == "" {
+		payload.Username = admin.Username
+	}
+	if payload.NewPassword != "" {
+		if len(payload.NewPassword) < 8 {
+			writeJSON(w, http.StatusBadRequest, response{Code: 400, Message: "新密码至少 8 位"})
+			return
+		}
+		if payload.NewPassword != payload.ConfirmPassword {
+			writeJSON(w, http.StatusBadRequest, response{Code: 400, Message: "两次输入的密码不一致"})
+			return
+		}
+		hash, err := security.HashPassword(payload.NewPassword)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, response{Code: 500, Message: err.Error()})
+			return
+		}
+		admin.PasswordHash = hash
+		admin.PasswordReset = true
+	}
+	admin.Username = payload.Username
+	if err := h.c.AdminRepo.Save(admin); err != nil {
+		writeJSON(w, http.StatusBadRequest, response{Code: 400, Message: err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, response{Code: 0, Message: "ok", Data: admin})
 }
 
 func (h *Handler) ListMedia(w http.ResponseWriter, _ *http.Request) {
@@ -320,7 +357,12 @@ func (h *Handler) ListMedia(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (h *Handler) UploadMedia(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(h.c.Config.Storage.MaxUploadSize); err != nil {
+	resolved, err := h.c.Settings.Resolve()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, response{Code: 500, Message: err.Error()})
+		return
+	}
+	if err := r.ParseMultipartForm(resolved.MaxUploadSize); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{Code: 400, Message: err.Error()})
 		return
 	}
@@ -346,8 +388,13 @@ func (h *Handler) DeleteMedia(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) PreviewConfig(w http.ResponseWriter, _ *http.Request) {
+	resolved, err := h.c.Settings.Resolve()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, response{Code: 500, Message: err.Error()})
+		return
+	}
 	writeJSON(w, http.StatusOK, response{Code: 0, Message: "ok", Data: map[string]string{
-		"previewKey": h.c.Config.App.PreviewSecret,
+		"previewKey": resolved.PreviewSecret,
 	}})
 }
 

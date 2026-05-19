@@ -74,9 +74,21 @@ type SiteSetting struct {
 	GithubURL         string `json:"githubUrl" gorm:"size:255"`
 	Logo              string `json:"logo" gorm:"size:500"`
 	DefaultOGImage    string `json:"defaultOgImage" gorm:"size:500"`
-	StorageDriver     string `json:"storageDriver" gorm:"size:20"`
-	StoragePublicURL  string `json:"storagePublicUrl" gorm:"size:255"`
 	SearchPlaceholder string `json:"searchPlaceholder" gorm:"size:120"`
+	BaseURL           string `json:"baseUrl" gorm:"size:255"`
+	PreviewSecret     string `json:"previewSecret" gorm:"size:255"`
+	MaxUploadSize     int64  `json:"maxUploadSize"`
+	StorageDriver     string `json:"storageDriver" gorm:"size:20"`
+	StorageLocalPath  string `json:"storageLocalPath" gorm:"size:255"`
+	StorageLocalBaseURL string `json:"storageLocalBaseUrl" gorm:"size:255"`
+	StorageS3Endpoint string `json:"storageS3Endpoint" gorm:"size:255"`
+	StorageS3Region   string `json:"storageS3Region" gorm:"size:120"`
+	StorageS3Bucket   string `json:"storageS3Bucket" gorm:"size:120"`
+	StorageS3AccessKey string `json:"storageS3AccessKey" gorm:"size:255"`
+	StorageS3SecretKey string `json:"storageS3SecretKey" gorm:"size:255"`
+	StorageS3UseSSL   bool   `json:"storageS3UseSsl"`
+	StorageS3PublicURL string `json:"storageS3PublicUrl" gorm:"size:255"`
+	StoragePublicURL  string `json:"storagePublicUrl" gorm:"size:255"`
 }
 
 type AdminUser struct {

@@ -10,7 +10,7 @@ const router = useRouter();
 const userStore = useUserStore();
 const loading = ref(false);
 const errorText = ref("");
-const loginForm = reactive({ username: "admin", password: "admin123456" });
+const loginForm = reactive({ username: "", password: "" });
 
 /**
  * 解析登录成功后的回跳地址，避免跳回登录页或非法路径。

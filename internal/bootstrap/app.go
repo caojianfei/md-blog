@@ -19,6 +19,7 @@ import (
 	markdownSvc "github.com/cybernote/md-blog/internal/service/markdown"
 	mediaSvc "github.com/cybernote/md-blog/internal/service/media"
 	seoSvc "github.com/cybernote/md-blog/internal/service/seo"
+	settingSvc "github.com/cybernote/md-blog/internal/service/setting"
 	"github.com/cybernote/md-blog/internal/view"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
@@ -34,9 +35,6 @@ type App struct {
 
 func New(cfg config.Config) (*App, error) {
 	if err := os.MkdirAll(cfg.App.DataDir, 0o755); err != nil {
-		return nil, err
-	}
-	if err := os.MkdirAll(cfg.Storage.LocalDir, 0o755); err != nil {
 		return nil, err
 	}
 
@@ -68,17 +66,27 @@ func New(cfg config.Config) (*App, error) {
 	mediaRepo := repository.NewMediaRepository(db)
 	settingRepo := repository.NewSettingRepository(db)
 	adminRepo := repository.NewAdminRepository(db)
+	settingsService := settingSvc.New(cfg, settingRepo)
 
 	markdownService := markdownSvc.New()
 	articleService := articleSvc.New(articleRepo, categoryRepo, tagRepo, markdownService)
 	authService := authSvc.New(adminRepo, sessionStore)
-	mediaService, err := mediaSvc.New(cfg, mediaRepo)
+	resolvedSettings, err := settingsService.Resolve()
 	if err != nil {
 		return nil, err
 	}
-	seoService := seoSvc.New(cfg.App.BaseURL, settingRepo)
+	if resolvedSettings.Storage.Driver == "local" {
+		if err := os.MkdirAll(resolvedSettings.Storage.LocalDirAbs, 0o755); err != nil {
+			return nil, err
+		}
+	}
+	mediaService, err := mediaSvc.New(cfg, settingsService, mediaRepo)
+	if err != nil {
+		return nil, err
+	}
+	seoService := seoSvc.New(settingsService)
 
-	container := &appcontainer.Container{Config: cfg, DB: db, SQLDB: sqlDB, Sessions: sessionStore, Renderer: renderer, TemplateFS: templateFS, AssetFS: assetFS, AdminFS: adminFS, ArticleRepo: articleRepo, CategoryRepo: categoryRepo, TagRepo: tagRepo, MediaRepo: mediaRepo, SettingRepo: settingRepo, AdminRepo: adminRepo, Markdown: markdownService, Article: articleService, Auth: authService, Media: mediaService, SEO: seoService}
+	container := &appcontainer.Container{Config: cfg, DB: db, SQLDB: sqlDB, Sessions: sessionStore, Renderer: renderer, TemplateFS: templateFS, AssetFS: assetFS, AdminFS: adminFS, ArticleRepo: articleRepo, CategoryRepo: categoryRepo, TagRepo: tagRepo, MediaRepo: mediaRepo, SettingRepo: settingRepo, AdminRepo: adminRepo, Settings: settingsService, Markdown: markdownService, Article: articleService, Auth: authService, Media: mediaService, SEO: seoService}
 	mux := router.New(container)
 	server := &http.Server{Addr: cfg.App.Addr, Handler: mux, ReadTimeout: time.Duration(cfg.App.ReadTimeout) * time.Second, WriteTimeout: time.Duration(cfg.App.WriteTimeout) * time.Second}
 	return &App{Container: container, server: server}, nil

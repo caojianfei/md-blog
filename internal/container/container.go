@@ -11,6 +11,7 @@ import (
 	markdownSvc "github.com/cybernote/md-blog/internal/service/markdown"
 	mediaSvc "github.com/cybernote/md-blog/internal/service/media"
 	seoSvc "github.com/cybernote/md-blog/internal/service/seo"
+	settingSvc "github.com/cybernote/md-blog/internal/service/setting"
 	"github.com/cybernote/md-blog/internal/view"
 	"github.com/gorilla/sessions"
 	"gorm.io/gorm"
@@ -31,6 +32,7 @@ type Container struct {
 	MediaRepo    *repository.MediaRepository
 	SettingRepo  *repository.SettingRepository
 	AdminRepo    *repository.AdminRepository
+	Settings     *settingSvc.Service
 	Markdown     *markdownSvc.Service
 	Article      *articleSvc.Service
 	Auth         *authSvc.Service

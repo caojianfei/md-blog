@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cybernote/md-blog/internal/repository"
+	settingSvc "github.com/cybernote/md-blog/internal/service/setting"
 )
 
 type Meta struct {
@@ -17,16 +17,19 @@ type Meta struct {
 }
 
 type Service struct {
-	baseURL  string
-	settings *repository.SettingRepository
+	settings *settingSvc.Service
 }
 
-func New(baseURL string, settings *repository.SettingRepository) *Service {
-	return &Service{baseURL: baseURL, settings: settings}
+func New(settings *settingSvc.Service) *Service {
+	return &Service{settings: settings}
 }
 
 func (s *Service) Build(title, description, keywords, path string) Meta {
-	site, _ := s.settings.Get()
+	resolved, _ := s.settings.Resolve()
+	if resolved == nil || resolved.Site == nil {
+		return Meta{Title: title, Description: description, Keywords: keywords, Canonical: path, Type: "website"}
+	}
+	site := resolved.Site
 
 	siteTitle := site.SiteName
 	if strings.TrimSpace(title) != "" {
@@ -42,7 +45,7 @@ func (s *Service) Build(title, description, keywords, path string) Meta {
 		Title:       siteTitle,
 		Description: description,
 		Keywords:    keywords,
-		Canonical:   strings.TrimRight(s.baseURL, "/") + path,
+		Canonical:   strings.TrimRight(resolved.BaseURL, "/") + path,
 		OGImage:     site.DefaultOGImage,
 		Type:        "website",
 	}

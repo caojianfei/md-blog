@@ -67,7 +67,8 @@ func (h *Handler) Article(w http.ResponseWriter, r *http.Request) {
 
 	isPreview := false
 	if previewKey := r.URL.Query().Get("preview_key"); previewKey != "" {
-		if previewKey != h.c.Config.App.PreviewSecret {
+		resolved, err := h.c.Settings.Resolve()
+		if err != nil || previewKey != resolved.PreviewSecret {
 			http.NotFound(w, r)
 			return
 		}
@@ -206,10 +207,15 @@ func (h *Handler) RSS(w http.ResponseWriter, _ *http.Request) {
 		Channel Channel  `xml:"channel"`
 	}
 
-	site, _ := h.c.SettingRepo.Get()
-	feed := RSS{Version: "2.0", Channel: Channel{Title: h.c.Config.App.Name, Link: h.c.Config.App.BaseURL, Description: site.SiteDescription}}
+	resolved, _ := h.c.Settings.Resolve()
+	if resolved == nil || resolved.Site == nil {
+		http.Error(w, "settings unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	site := resolved.Site
+	feed := RSS{Version: "2.0", Channel: Channel{Title: site.SiteName, Link: resolved.BaseURL, Description: site.SiteDescription}}
 	for _, article := range items {
-		feed.Channel.Items = append(feed.Channel.Items, Item{Title: article.Title, Link: h.c.Config.App.BaseURL + "/posts/" + url.PathEscape(article.Slug), Description: article.Excerpt})
+		feed.Channel.Items = append(feed.Channel.Items, Item{Title: article.Title, Link: resolved.BaseURL + "/posts/" + url.PathEscape(article.Slug), Description: article.Excerpt})
 	}
 
 	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
@@ -228,9 +234,14 @@ func (h *Handler) Sitemap(w http.ResponseWriter, _ *http.Request) {
 		URLs    []URL    `xml:"url"`
 	}
 
-	urls := []URL{{Loc: h.c.Config.App.BaseURL}, {Loc: h.c.Config.App.BaseURL + "/archives"}, {Loc: h.c.Config.App.BaseURL + "/about"}}
+	resolved, _ := h.c.Settings.Resolve()
+	if resolved == nil {
+		http.Error(w, "settings unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	urls := []URL{{Loc: resolved.BaseURL}, {Loc: resolved.BaseURL + "/archives"}, {Loc: resolved.BaseURL + "/about"}}
 	for _, article := range items {
-		urls = append(urls, URL{Loc: h.c.Config.App.BaseURL + "/posts/" + url.PathEscape(article.Slug)})
+		urls = append(urls, URL{Loc: resolved.BaseURL + "/posts/" + url.PathEscape(article.Slug)})
 	}
 
 	w.Header().Set("Content-Type", "application/xml; charset=utf-8")
@@ -239,11 +250,20 @@ func (h *Handler) Sitemap(w http.ResponseWriter, _ *http.Request) {
 
 func (h *Handler) Robots(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	_, _ = w.Write([]byte("User-agent: *\nAllow: /\nSitemap: " + h.c.Config.App.BaseURL + "/sitemap.xml\n"))
+	resolved, _ := h.c.Settings.Resolve()
+	if resolved == nil {
+		http.Error(w, "settings unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	_, _ = w.Write([]byte("User-agent: *\nAllow: /\nSitemap: " + resolved.BaseURL + "/sitemap.xml\n"))
 }
 
 func (h *Handler) baseData(title, path, description, keywords string) PageData {
-	site, _ := h.c.SettingRepo.Get()
+	resolved, _ := h.c.Settings.Resolve()
+	var site *model.SiteSetting
+	if resolved != nil {
+		site = resolved.Site
+	}
 	categories, _ := h.c.CategoryRepo.List()
 	tags, _ := h.c.TagRepo.List()
 	archives, _ := h.c.Article.Archives()
