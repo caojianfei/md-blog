@@ -88,8 +88,16 @@
       <section class="sidebar-panel">
         <h3>分类</h3>
         <div class="sidebar-list">
-          {{range .Categories}}<a href="/categories/{{pathEscape .Slug}}"><strong>{{.Name}}</strong><span>{{.Description}}</span></a>{{end}}
+          {{range .TopCategories}}
+          <a href="/categories/{{pathEscape .Slug}}">
+            <strong>{{.Name}} <span class="sidebar-count">{{.ArticleCount}} 篇</span></strong>
+            <span>{{.Description}}</span>
+          </a>
+          {{end}}
         </div>
+        {{if .HasMoreCategories}}
+        <button class="button button--ghost sidebar-more" type="button" data-category-modal-open>查看更多分类</button>
+        {{end}}
       </section>
       <section class="sidebar-panel">
         <h3>标签</h3>
@@ -105,5 +113,30 @@
       </section>
     </aside>
   </div>
+
+  {{if .HasMoreCategories}}
+  <div class="overlay-modal" data-category-modal hidden>
+    <div class="overlay-modal__backdrop" data-category-modal-close></div>
+    <div class="overlay-modal__panel" role="dialog" aria-modal="true" aria-labelledby="category-modal-title" tabindex="-1">
+      <div class="overlay-modal__header">
+        <div>
+          <span class="eyebrow">Category Index</span>
+          <h3 id="category-modal-title">全部分类</h3>
+        </div>
+        <button class="overlay-modal__close" type="button" aria-label="关闭" data-category-modal-close>&times;</button>
+      </div>
+      <div class="overlay-modal__body">
+        <div class="sidebar-list overlay-modal__list">
+          {{range .Categories}}
+          <a href="/categories/{{pathEscape .Slug}}">
+            <strong>{{.Name}} <span class="sidebar-count">{{.ArticleCount}} 篇</span></strong>
+            <span>{{.Description}}</span>
+          </a>
+          {{end}}
+        </div>
+      </div>
+    </div>
+  </div>
+  {{end}}
 </section>
 {{end}}

@@ -9,7 +9,10 @@ export const request = async (url, options = {}) => {
     if (response.status === 401) {
       window.dispatchEvent(new Event("unauthorized"));
     }
-    throw new Error(data?.message || `HTTP ${response.status}`);
+    const error = new Error(data?.message || `HTTP ${response.status}`);
+    error.status = response.status;
+    error.data = data?.data;
+    throw error;
   }
   if (!data || data.code !== 0) throw new Error(data?.message || "请求失败");
   return data.data;

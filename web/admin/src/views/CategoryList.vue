@@ -2,7 +2,7 @@
 import { ref, reactive, onMounted } from "vue";
 import { request } from "../utils/request";
 import Modal from "../components/Modal.vue";
-import { Plus, Edit, FolderTree } from "lucide-vue-next";
+import { Plus, Edit, FolderTree, Trash2 } from "lucide-vue-next";
 
 const categories = ref([]);
 const isModalVisible = ref(false);
@@ -50,6 +50,33 @@ const saveCategory = async () => {
   }
 };
 
+const deleteCategory = async (item) => {
+  if (!window.confirm(`确定删除分类「${item.name}」吗？`)) {
+    return;
+  }
+  try {
+    await request(`/api/admin/categories/${item.id}`, { method: "DELETE" });
+    await loadData();
+  } catch (err) {
+    if (err.status === 409) {
+      const articleCount = err.data?.articleCount ?? item.articleCount ?? 0;
+      const confirmed = window.confirm(`该分类下有 ${articleCount} 篇文章，删除后这些文章将变为未分类，是否继续？`);
+      if (!confirmed) {
+        return;
+      }
+      try {
+        await request(`/api/admin/categories/${item.id}?force=1`, { method: "DELETE" });
+        await loadData();
+        return;
+      } catch (forceErr) {
+        alert(forceErr.message || "删除分类失败");
+        return;
+      }
+    }
+    alert(err.message || "删除分类失败");
+  }
+};
+
 onMounted(loadData);
 </script>
 
@@ -74,15 +101,16 @@ onMounted(loadData);
               <th scope="col" class="px-6 py-3 font-medium w-20">ID</th>
               <th scope="col" class="px-6 py-3 font-medium">分类名称</th>
               <th scope="col" class="px-6 py-3 font-medium">Slug</th>
-              <th scope="col" class="px-6 py-3 font-medium text-right w-24">操作</th>
+              <th scope="col" class="px-6 py-3 font-medium">已发布文章</th>
+              <th scope="col" class="px-6 py-3 font-medium text-right w-32">操作</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-zinc-200 dark:divide-zinc-800">
             <tr v-if="isLoading && categories.length === 0">
-              <td colspan="4" class="px-6 py-12 text-center text-zinc-500 dark:text-zinc-400">加载中...</td>
+              <td colspan="5" class="px-6 py-12 text-center text-zinc-500 dark:text-zinc-400">加载中...</td>
             </tr>
             <tr v-else-if="categories.length === 0">
-              <td colspan="4" class="px-6 py-12 text-center text-zinc-500 dark:text-zinc-400">
+              <td colspan="5" class="px-6 py-12 text-center text-zinc-500 dark:text-zinc-400">
                 <div class="bg-zinc-100 dark:bg-zinc-800/50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
                   <FolderTree class="w-6 h-6 text-zinc-400" />
                 </div>
@@ -97,6 +125,7 @@ onMounted(loadData);
               <td class="px-6 py-4 text-zinc-500 dark:text-zinc-400">{{ item.id }}</td>
               <td class="px-6 py-4 font-medium text-zinc-900 dark:text-zinc-100">{{ item.name }}</td>
               <td class="px-6 py-4 text-zinc-500 dark:text-zinc-400">{{ item.slug || '-' }}</td>
+              <td class="px-6 py-4 text-zinc-500 dark:text-zinc-400">{{ item.articleCount ?? 0 }}</td>
               <td class="px-6 py-4 text-right">
                 <button 
                   @click="openEditModal(item)"
@@ -104,6 +133,13 @@ onMounted(loadData);
                   title="编辑"
                 >
                   <Edit class="w-4 h-4" />
+                </button>
+                <button
+                  @click="deleteCategory(item)"
+                  class="p-2 text-zinc-500 hover:text-red-600 dark:text-zinc-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
+                  title="删除"
+                >
+                  <Trash2 class="w-4 h-4" />
                 </button>
               </td>
             </tr>

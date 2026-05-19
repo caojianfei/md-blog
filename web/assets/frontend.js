@@ -85,6 +85,37 @@ function initCodeBlocks() {
   });
 }
 
+function initCategoryModal() {
+  const modal = document.querySelector("[data-category-modal]");
+  if (!modal) {
+    return;
+  }
+
+  const openButton = document.querySelector("[data-category-modal-open]");
+  const closeButtons = modal.querySelectorAll("[data-category-modal-close]");
+  const panel = modal.querySelector(".overlay-modal__panel");
+
+  const close = () => {
+    modal.setAttribute("hidden", "");
+    document.body.classList.remove("is-modal-open");
+  };
+
+  const open = () => {
+    modal.removeAttribute("hidden");
+    document.body.classList.add("is-modal-open");
+    panel?.focus();
+  };
+
+  openButton?.addEventListener("click", open);
+  closeButtons.forEach((button) => button.addEventListener("click", close));
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !modal.hasAttribute("hidden")) {
+      close();
+    }
+  });
+}
+
 function initToc() {
   const toc = document.querySelector("[data-toc]");
   if (!toc) {
@@ -403,7 +434,10 @@ class Terminal {
         this.printLine('', '暂无分类', 'info');
         return;
       }
-      const list = categories.map(c => `├── ${c.name}${c.description ? ' - ' + c.description : ''}`).join('<br>');
+      const list = categories.map((c) => {
+        const count = c.articleCount ? ` (${c.articleCount})` : '';
+        return `├── ${c.name}${count}${c.description ? ' - ' + c.description : ''}`;
+      }).join('<br>');
       this.printLine('', `<div class="terminal-output-text">📁 分类列表<br>${list}</div>`);
     } catch {
       this.printLine('', '获取分类列表失败', 'error');
@@ -509,6 +543,7 @@ class Terminal {
 document.addEventListener("DOMContentLoaded", () => {
   initThemeToggle();
   initCodeBlocks();
+  initCategoryModal();
   initToc();
   const terminalElement = document.querySelector('[data-terminal]');
   if (terminalElement) {
@@ -998,4 +1033,3 @@ class PixelCat {
     this.bubble.style.bottom = `${this.canvas.height - catTopY + 4}px`;
   }
 }
-

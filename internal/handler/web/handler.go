@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 
 	appcontainer "github.com/cybernote/md-blog/internal/container"
@@ -20,26 +21,28 @@ type Handler struct {
 }
 
 type PageData struct {
-	Site            *model.SiteSetting
-	Meta            seoSvc.Meta
-	Articles        []model.Article
-	Article         *model.Article
-	Headings        []markdownSvc.Heading
-	Categories      []model.Category
-	Tags            []model.Tag
-	Archives        []repository.ArchiveItem
-	CurrentPage     int
-	TotalPages      int
-	Path            string
-	Query           string
-	CurrentTag      *model.Tag
-	CurrentCategory *model.Category
-	PrevArticle     *model.Article
-	NextArticle     *model.Article
-	AboutHTML       string
-	PublishedCount  int64
-	ArchiveCount    int
-	IsPreview       bool
+	Site              *model.SiteSetting
+	Meta              seoSvc.Meta
+	Articles          []model.Article
+	Article           *model.Article
+	Headings          []markdownSvc.Heading
+	Categories        []model.Category
+	TopCategories     []model.Category
+	Tags              []model.Tag
+	Archives          []repository.ArchiveItem
+	CurrentPage       int
+	TotalPages        int
+	Path              string
+	Query             string
+	CurrentTag        *model.Tag
+	CurrentCategory   *model.Category
+	PrevArticle       *model.Article
+	NextArticle       *model.Article
+	AboutHTML         string
+	PublishedCount    int64
+	ArchiveCount      int
+	IsPreview         bool
+	HasMoreCategories bool
 }
 
 func New(c *appcontainer.Container) *Handler { return &Handler{c: c} }
@@ -244,14 +247,22 @@ func (h *Handler) baseData(title, path, description, keywords string) PageData {
 	categories, _ := h.c.CategoryRepo.List()
 	tags, _ := h.c.TagRepo.List()
 	archives, _ := h.c.Article.Archives()
+	visibleCategories := prepareCategories(categories)
+	visibleTags := prepareTags(tags)
+	topCategories := visibleCategories
+	if len(topCategories) > 5 {
+		topCategories = topCategories[:5]
+	}
 	return PageData{
-		Site:         site,
-		Categories:   categories,
-		Tags:         tags,
-		Archives:     archives,
-		ArchiveCount: len(archives),
-		Path:         path,
-		Meta:         h.c.SEO.Build(title, description, keywords, path),
+		Site:              site,
+		Categories:        visibleCategories,
+		TopCategories:     topCategories,
+		Tags:              visibleTags,
+		Archives:          archives,
+		ArchiveCount:      len(archives),
+		Path:              path,
+		Meta:              h.c.SEO.Build(title, description, keywords, path),
+		HasMoreCategories: len(visibleCategories) > len(topCategories),
 	}
 }
 
@@ -268,4 +279,41 @@ func totalPages(total int64, size int) int {
 		return 1
 	}
 	return int((total + int64(size) - 1) / int64(size))
+}
+
+func prepareCategories(items []model.Category) []model.Category {
+	filtered := make([]model.Category, 0, len(items))
+	for _, item := range items {
+		if item.ArticleCount <= 0 {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	sort.SliceStable(filtered, func(i, j int) bool {
+		if filtered[i].ArticleCount != filtered[j].ArticleCount {
+			return filtered[i].ArticleCount > filtered[j].ArticleCount
+		}
+		if filtered[i].Sort != filtered[j].Sort {
+			return filtered[i].Sort < filtered[j].Sort
+		}
+		return filtered[i].CreatedAt.After(filtered[j].CreatedAt)
+	})
+	return filtered
+}
+
+func prepareTags(items []model.Tag) []model.Tag {
+	filtered := make([]model.Tag, 0, len(items))
+	for _, item := range items {
+		if item.ArticleCount <= 0 {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	sort.SliceStable(filtered, func(i, j int) bool {
+		if filtered[i].ArticleCount != filtered[j].ArticleCount {
+			return filtered[i].ArticleCount > filtered[j].ArticleCount
+		}
+		return filtered[i].CreatedAt.After(filtered[j].CreatedAt)
+	})
+	return filtered
 }

@@ -46,12 +46,16 @@ func (s *Service) Save(input SaveInput) (*model.Article, error) {
 	}
 
 	var article *model.Article
+	var affectedCategoryIDs []uint
+	var affectedTagIDs []uint
 	if input.ID > 0 {
 		existing, err := s.articles.FindByID(input.ID)
 		if err != nil {
 			return nil, err
 		}
 		article = existing
+		affectedCategoryIDs = append(affectedCategoryIDs, valueOrZero(existing.CategoryID))
+		affectedTagIDs = append(affectedTagIDs, tagIDsFromModels(existing.Tags)...)
 	} else {
 		article = &model.Article{}
 	}
@@ -76,20 +80,31 @@ func (s *Service) Save(input SaveInput) (*model.Article, error) {
 	article.HTMLContent = rendered.HTML
 	article.CoverImage = strings.TrimSpace(input.CoverImage)
 	article.CategoryID = input.CategoryID
+	article.Category = nil
+	article.Tags = nil
 	article.SEODescription = strings.TrimSpace(input.SEODescription)
 	article.SEOKeywords = strings.TrimSpace(input.SEOKeywords)
 	article.Status = status
 	article.PublishedAt = repository.PublishedAtForStatus(status, article.PublishedAt)
+	affectedCategoryIDs = append(affectedCategoryIDs, valueOrZero(input.CategoryID))
+	affectedTagIDs = append(affectedTagIDs, input.TagIDs...)
 
 	if err := s.articles.Save(article); err != nil {
 		return nil, err
 	}
 
-	tags, err := s.tags.FindByIDs(input.TagIDs)
-	if err != nil {
-		return nil, err
+	tags, tagErr := s.tags.FindByIDs(input.TagIDs)
+	if tagErr != nil {
+		return nil, tagErr
 	}
 	if err := s.articles.SetTags(article, tags); err != nil {
+		return nil, err
+	}
+
+	if err := s.articles.RefreshCategoryCounts(affectedCategoryIDs); err != nil {
+		return nil, err
+	}
+	if err := s.articles.RefreshTagCounts(affectedTagIDs); err != nil {
 		return nil, err
 	}
 	return s.articles.FindByID(article.ID)
@@ -116,12 +131,39 @@ func (s *Service) UpdateStatus(id uint, status model.ArticleStatus) (*model.Arti
 	if err != nil {
 		return nil, err
 	}
+	tagIDs := tagIDsFromModels(article.Tags)
+	categoryID := valueOrZero(article.CategoryID)
 	article.Status = status
 	article.PublishedAt = repository.PublishedAtForStatus(status, article.PublishedAt)
+	article.Category = nil
+	article.Tags = nil
 	if err := s.articles.Save(article); err != nil {
 		return nil, err
 	}
+	if err := s.articles.RefreshCategoryCounts([]uint{categoryID}); err != nil {
+		return nil, err
+	}
+	if err := s.articles.RefreshTagCounts(tagIDs); err != nil {
+		return nil, err
+	}
 	return s.articles.FindByID(id)
+}
+
+func (s *Service) Delete(id uint) error {
+	article, err := s.articles.FindByID(id)
+	if err != nil {
+		return err
+	}
+
+	affectedCategoryIDs := []uint{valueOrZero(article.CategoryID)}
+	affectedTagIDs := tagIDsFromModels(article.Tags)
+	if err := s.articles.Delete(id); err != nil {
+		return err
+	}
+	if err := s.articles.RefreshCategoryCounts(affectedCategoryIDs); err != nil {
+		return err
+	}
+	return s.articles.RefreshTagCounts(affectedTagIDs)
 }
 
 func slugify(raw, fallback string) string {
@@ -150,4 +192,19 @@ func excerptFrom(content string) string {
 		return string(runes[:140]) + "..."
 	}
 	return compact
+}
+
+func valueOrZero(id *uint) uint {
+	if id == nil {
+		return 0
+	}
+	return *id
+}
+
+func tagIDsFromModels(tags []model.Tag) []uint {
+	ids := make([]uint, 0, len(tags))
+	for _, tag := range tags {
+		ids = append(ids, tag.ID)
+	}
+	return ids
 }

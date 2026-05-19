@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -112,6 +113,18 @@ func (h *Handler) SaveArticle(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, response{Code: 0, Message: "ok", Data: article})
 }
 
+func (h *Handler) DeleteArticle(w http.ResponseWriter, r *http.Request) {
+	if err := h.c.Article.Delete(uint(parseInt(chi.URLParam(r, "id")))); err != nil {
+		status := http.StatusBadRequest
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			status = http.StatusNotFound
+		}
+		writeJSON(w, status, response{Code: status, Message: err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, response{Code: 0, Message: "ok"})
+}
+
 func (h *Handler) UpdateArticleStatus(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
 		Status model.ArticleStatus `json:"status"`
@@ -173,7 +186,32 @@ func (h *Handler) SaveCategory(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) DeleteCategory(w http.ResponseWriter, r *http.Request) {
-	if err := h.c.CategoryRepo.Delete(uint(parseInt(chi.URLParam(r, "id")))); err != nil {
+	categoryID := uint(parseInt(chi.URLParam(r, "id")))
+	articleCount, err := h.c.ArticleRepo.CountByCategory(categoryID)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, response{Code: 400, Message: err.Error()})
+		return
+	}
+	if articleCount > 0 && !parseForce(r) {
+		writeJSON(w, http.StatusConflict, response{
+			Code:    http.StatusConflict,
+			Message: fmt.Sprintf("该分类下有 %d 篇文章，删除后这些文章将变为未分类", articleCount),
+			Data: map[string]any{
+				"confirmRequired": true,
+				"articleCount":    articleCount,
+			},
+		})
+		return
+	}
+	err = h.c.DB.Transaction(func(tx *gorm.DB) error {
+		articleRepo := repository.NewArticleRepository(tx)
+		categoryRepo := repository.NewCategoryRepository(tx)
+		if err := articleRepo.ClearCategory(categoryID); err != nil {
+			return err
+		}
+		return categoryRepo.Delete(categoryID)
+	})
+	if err != nil {
 		writeJSON(w, http.StatusBadRequest, response{Code: 400, Message: err.Error()})
 		return
 	}
@@ -209,7 +247,32 @@ func (h *Handler) SaveTag(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) DeleteTag(w http.ResponseWriter, r *http.Request) {
-	if err := h.c.TagRepo.Delete(uint(parseInt(chi.URLParam(r, "id")))); err != nil {
+	tagID := uint(parseInt(chi.URLParam(r, "id")))
+	articleCount, err := h.c.ArticleRepo.CountByTag(tagID)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, response{Code: 400, Message: err.Error()})
+		return
+	}
+	if articleCount > 0 && !parseForce(r) {
+		writeJSON(w, http.StatusConflict, response{
+			Code:    http.StatusConflict,
+			Message: fmt.Sprintf("该标签关联 %d 篇文章，删除后会同步移除这些文章上的该标签", articleCount),
+			Data: map[string]any{
+				"confirmRequired": true,
+				"articleCount":    articleCount,
+			},
+		})
+		return
+	}
+	err = h.c.DB.Transaction(func(tx *gorm.DB) error {
+		articleRepo := repository.NewArticleRepository(tx)
+		tagRepo := repository.NewTagRepository(tx)
+		if err := articleRepo.DetachTag(tagID); err != nil {
+			return err
+		}
+		return tagRepo.Delete(tagID)
+	})
+	if err != nil {
 		writeJSON(w, http.StatusBadRequest, response{Code: 400, Message: err.Error()})
 		return
 	}
@@ -352,12 +415,14 @@ func (h *Handler) TerminalCategories(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 
+	categories = visibleCategories(categories)
 	result := make([]map[string]any, 0, len(categories))
 	for _, cat := range categories {
 		result = append(result, map[string]any{
-			"name":        cat.Name,
-			"slug":        cat.Slug,
-			"description": cat.Description,
+			"name":         cat.Name,
+			"slug":         cat.Slug,
+			"description":  cat.Description,
+			"articleCount": cat.ArticleCount,
 		})
 	}
 
@@ -371,6 +436,7 @@ func (h *Handler) TerminalTags(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 
+	tags = visibleTags(tags)
 	result := make([]map[string]string, 0, len(tags))
 	for _, tag := range tags {
 		result = append(result, map[string]string{
@@ -380,6 +446,48 @@ func (h *Handler) TerminalTags(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, response{Code: 0, Message: "ok", Data: map[string]any{"tags": result}})
+}
+
+func parseForce(r *http.Request) bool {
+	value := strings.TrimSpace(r.URL.Query().Get("force"))
+	return value == "1" || strings.EqualFold(value, "true")
+}
+
+func visibleCategories(items []model.Category) []model.Category {
+	filtered := make([]model.Category, 0, len(items))
+	for _, item := range items {
+		if item.ArticleCount <= 0 {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	sort.SliceStable(filtered, func(i, j int) bool {
+		if filtered[i].ArticleCount != filtered[j].ArticleCount {
+			return filtered[i].ArticleCount > filtered[j].ArticleCount
+		}
+		if filtered[i].Sort != filtered[j].Sort {
+			return filtered[i].Sort < filtered[j].Sort
+		}
+		return filtered[i].CreatedAt.After(filtered[j].CreatedAt)
+	})
+	return filtered
+}
+
+func visibleTags(items []model.Tag) []model.Tag {
+	filtered := make([]model.Tag, 0, len(items))
+	for _, item := range items {
+		if item.ArticleCount <= 0 {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	sort.SliceStable(filtered, func(i, j int) bool {
+		if filtered[i].ArticleCount != filtered[j].ArticleCount {
+			return filtered[i].ArticleCount > filtered[j].ArticleCount
+		}
+		return filtered[i].CreatedAt.After(filtered[j].CreatedAt)
+	})
+	return filtered
 }
 
 var _ = fmt.Sprintf

@@ -10,7 +10,9 @@ import {
   Eye,
   EyeOff,
   Filter,
-  ExternalLink
+  ExternalLink,
+  FileText,
+  Trash2
 } from "lucide-vue-next";
 
 const router = useRouter();
@@ -50,6 +52,18 @@ const changeStatus = async (row) => {
     await loadAll();
   } catch (err) {
     alert(err.message || "修改状态失败");
+  }
+};
+
+const deleteArticle = async (row) => {
+  if (!window.confirm(`确定删除文章「${row.title}」吗？此操作不可恢复。`)) {
+    return;
+  }
+  try {
+    await request(`/api/admin/articles/${row.id}`, { method: "DELETE" });
+    await loadAll();
+  } catch (err) {
+    alert(err.message || "删除文章失败");
   }
 };
 
@@ -222,6 +236,13 @@ onMounted(async () => {
                     title="编辑"
                   >
                     <Edit class="w-4 h-4" />
+                  </button>
+                  <button
+                    @click="deleteArticle(row)"
+                    class="p-2 text-zinc-500 hover:text-red-600 dark:text-zinc-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
+                    title="删除"
+                  >
+                    <Trash2 class="w-4 h-4" />
                   </button>
                   <button 
                     @click="changeStatus(row)"

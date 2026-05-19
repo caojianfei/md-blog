@@ -2,6 +2,7 @@ package repository
 
 import (
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -46,6 +47,15 @@ func NewArticleRepository(db *gorm.DB) *ArticleRepository {
 
 func (r *ArticleRepository) Save(article *model.Article) error {
 	return r.db.Session(&gorm.Session{FullSaveAssociations: true}).Save(article).Error
+}
+
+func (r *ArticleRepository) Delete(id uint) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("article_id = ?", id).Delete(&model.ArticleTag{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&model.Article{}, id).Error
+	})
 }
 
 func (r *ArticleRepository) FindByID(id uint) (*model.Article, error) {
@@ -133,6 +143,39 @@ func (r *ArticleRepository) SetTags(article *model.Article, tags []model.Tag) er
 	return r.db.Model(article).Association("Tags").Replace(tags)
 }
 
+func (r *ArticleRepository) CountByCategory(categoryID uint) (int64, error) {
+	var count int64
+	err := r.db.Model(&model.Article{}).Where("category_id = ?", categoryID).Count(&count).Error
+	return count, err
+}
+
+func (r *ArticleRepository) CountByTag(tagID uint) (int64, error) {
+	var count int64
+	err := r.db.Model(&model.Article{}).
+		Joins("JOIN article_tags at ON at.article_id = articles.id").
+		Where("at.tag_id = ?", tagID).
+		Count(&count).Error
+	return count, err
+}
+
+func (r *ArticleRepository) ClearCategory(categoryID uint) error {
+	return r.db.Model(&model.Article{}).
+		Where("category_id = ?", categoryID).
+		Update("category_id", nil).Error
+}
+
+func (r *ArticleRepository) DetachTag(tagID uint) error {
+	return r.db.Where("tag_id = ?", tagID).Delete(&model.ArticleTag{}).Error
+}
+
+func (r *ArticleRepository) RefreshCategoryCounts(ids []uint) error {
+	return r.refreshCategoryCounts(r.db, ids)
+}
+
+func (r *ArticleRepository) RefreshTagCounts(ids []uint) error {
+	return r.refreshTagCounts(r.db, ids)
+}
+
 func (r *ArticleRepository) DashboardStats() (*DashboardStats, error) {
 	stats := &DashboardStats{}
 	if err := r.db.Model(&model.Article{}).Count(&stats.Articles).Error; err != nil {
@@ -208,4 +251,108 @@ func PublishedAtForStatus(status model.ArticleStatus, previous *time.Time) *time
 		return &now
 	}
 	return nil
+}
+
+func (r *ArticleRepository) refreshCategoryCounts(db *gorm.DB, ids []uint) error {
+	targetIDs := uniqueUintIDs(ids)
+	return db.Transaction(func(tx *gorm.DB) error {
+		reset := tx.Model(&model.Category{})
+		if len(targetIDs) > 0 {
+			reset = reset.Where("id IN ?", targetIDs)
+		} else {
+			reset = reset.Where("id > 0")
+		}
+		if err := reset.Update("article_count", 0).Error; err != nil {
+			return err
+		}
+
+		type categoryCountRow struct {
+			CategoryID uint
+			Count      int64
+		}
+
+		query := tx.Model(&model.Article{}).
+			Select("category_id AS category_id, COUNT(*) AS count").
+			Where("status = ? AND category_id IS NOT NULL", model.ArticleStatusPublished)
+		if len(targetIDs) > 0 {
+			query = query.Where("category_id IN ?", targetIDs)
+		}
+
+		var rows []categoryCountRow
+		if err := query.Group("category_id").Scan(&rows).Error; err != nil {
+			return err
+		}
+
+		for _, row := range rows {
+			if err := tx.Model(&model.Category{}).
+				Where("id = ?", row.CategoryID).
+				Update("article_count", row.Count).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (r *ArticleRepository) refreshTagCounts(db *gorm.DB, ids []uint) error {
+	targetIDs := uniqueUintIDs(ids)
+	return db.Transaction(func(tx *gorm.DB) error {
+		reset := tx.Model(&model.Tag{})
+		if len(targetIDs) > 0 {
+			reset = reset.Where("id IN ?", targetIDs)
+		} else {
+			reset = reset.Where("id > 0")
+		}
+		if err := reset.Update("article_count", 0).Error; err != nil {
+			return err
+		}
+
+		type tagCountRow struct {
+			TagID uint
+			Count int64
+		}
+
+		query := tx.Table("article_tags AS at").
+			Select("at.tag_id AS tag_id, COUNT(*) AS count").
+			Joins("JOIN articles ON articles.id = at.article_id").
+			Where("articles.status = ? AND articles.deleted_at IS NULL", model.ArticleStatusPublished)
+		if len(targetIDs) > 0 {
+			query = query.Where("at.tag_id IN ?", targetIDs)
+		}
+
+		var rows []tagCountRow
+		if err := query.Group("at.tag_id").Scan(&rows).Error; err != nil {
+			return err
+		}
+
+		for _, row := range rows {
+			if err := tx.Model(&model.Tag{}).
+				Where("id = ?", row.TagID).
+				Update("article_count", row.Count).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func uniqueUintIDs(ids []uint) []uint {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	seen := make(map[uint]struct{}, len(ids))
+	result := make([]uint, 0, len(ids))
+	for _, id := range ids {
+		if id == 0 {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		result = append(result, id)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i] < result[j] })
+	return result
 }
