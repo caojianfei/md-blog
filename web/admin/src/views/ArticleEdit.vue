@@ -37,6 +37,8 @@ const isSettingsOpen = ref(true);
 const isEmojiPickerOpen = ref(false);
 const editorTextarea = ref(null);
 const viewportWidth = ref(0);
+const isSavingArticle = ref(false);
+const saveAction = ref("");
 const editorSelection = reactive({
   start: 0,
   end: 0,
@@ -57,6 +59,8 @@ const previewModeLabel = computed(() => {
   }
   return "仅编辑";
 });
+const draftButtonLabel = computed(() => (isSavingArticle.value && saveAction.value === "draft" ? "保存中..." : "保存草稿"));
+const publishButtonLabel = computed(() => (isSavingArticle.value && saveAction.value === "published" ? "发布中..." : "发布"));
 
 const getDefaultPreviewMode = (width) =>
   width >= DESKTOP_SPLIT_BREAKPOINT ? "split" : "edit";
@@ -380,6 +384,10 @@ const loadArticle = async () => {
 };
 
 const saveArticle = async (status = editor.status) => {
+  if (isSavingArticle.value) {
+    return;
+  }
+
   const normalizeID = (value) => {
     if (value === null || value === undefined || value === "") {
       return null;
@@ -398,6 +406,8 @@ const saveArticle = async (status = editor.status) => {
     status,
   };
 
+  isSavingArticle.value = true;
+  saveAction.value = status;
   try {
     const data = await request("/api/admin/articles", {
       method: "POST",
@@ -426,6 +436,9 @@ const saveArticle = async (status = editor.status) => {
     router.replace("/articles");
   } catch (error) {
     alert(error.message || "保存失败");
+  } finally {
+    isSavingArticle.value = false;
+    saveAction.value = "";
   }
 };
 
@@ -491,17 +504,19 @@ onUnmounted(() => {
       <div class="flex items-center gap-2 sm:w-auto">
         <button
           @click="saveArticle('draft')"
-          class="inline-flex flex-1 items-center justify-center rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700 sm:flex-none"
+          :disabled="isSavingArticle"
+          class="inline-flex flex-1 items-center justify-center rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700 sm:flex-none"
         >
-          <Save class="mr-2 h-4 w-4" />
-          保存草稿
+          <Save class="mr-2 h-4 w-4" :class="{ 'animate-spin': isSavingArticle && saveAction === 'draft' }" />
+          {{ draftButtonLabel }}
         </button>
         <button
           @click="saveArticle('published')"
-          class="inline-flex flex-1 items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 sm:flex-none"
+          :disabled="isSavingArticle"
+          class="inline-flex flex-1 items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
         >
-          <Send class="mr-2 h-4 w-4" />
-          发布
+          <Send class="mr-2 h-4 w-4" :class="{ 'animate-spin': isSavingArticle && saveAction === 'published' }" />
+          {{ publishButtonLabel }}
         </button>
       </div>
     </div>

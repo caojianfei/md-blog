@@ -1,9 +1,13 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { request } from "../utils/request";
 import { Save, Settings, Info, FileText, Monitor, Globe, Image, Upload, Shield, HardDrive } from "lucide-vue-next";
 import CoverUploadField from "../components/CoverUploadField.vue";
 import { uploadMedia } from "../utils/media";
+
+const route = useRoute();
+const router = useRouter();
 
 const settings = reactive({
   siteName: "",
@@ -65,16 +69,28 @@ const showAIBaseUrl = computed(() => settings.aiProvider === "openai_compatible"
 
 const isValidTab = (tab) => tabs.some((item) => item.key === tab);
 
-const syncTabFromHash = () => {
-  const hash = window.location.hash.replace(/^#/, "");
-  if (isValidTab(hash)) {
-    activeTab.value = hash;
+const syncTabFromRoute = async (tab) => {
+  if (typeof tab === "string" && isValidTab(tab)) {
+    activeTab.value = tab;
+    return;
+  }
+
+  activeTab.value = "site";
+  if (route.query.tab !== "site") {
+    await router.replace({
+      path: route.path,
+      query: { ...route.query, tab: "site" },
+    });
   }
 };
 
-const setActiveTab = (tab) => {
+const setActiveTab = async (tab) => {
   if (isValidTab(tab)) {
     activeTab.value = tab;
+    await router.replace({
+      path: route.path,
+      query: { ...route.query, tab },
+    });
   }
 };
 
@@ -156,21 +172,13 @@ const saveAccount = async () => {
 };
 
 onMounted(() => {
-  syncTabFromHash();
+  syncTabFromRoute(route.query.tab);
   loadSettings();
   loadAccount();
-  window.addEventListener("hashchange", syncTabFromHash);
 });
 
-onBeforeUnmount(() => {
-  window.removeEventListener("hashchange", syncTabFromHash);
-});
-
-watch(activeTab, (value) => {
-  const nextHash = `#${value}`;
-  if (window.location.hash !== nextHash) {
-    window.history.replaceState(null, "", nextHash);
-  }
+watch(() => route.query.tab, (value) => {
+  syncTabFromRoute(value);
 });
 </script>
 

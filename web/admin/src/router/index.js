@@ -50,6 +50,13 @@ const routes = [
         path: 'settings',
         name: 'Settings',
         component: () => import('../views/Settings.vue')
+      },
+      {
+        path: ':legacySettingsTab(site|content|seo|storage|ai|security)',
+        redirect: (to) => ({
+          name: 'Settings',
+          query: { tab: to.params.legacySettingsTab }
+        })
       }
     ]
   }
