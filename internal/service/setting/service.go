@@ -25,12 +25,22 @@ type ResolvedStorage struct {
 	S3PublicURL  string
 }
 
+type ResolvedAI struct {
+	Enabled        bool
+	Provider       string
+	Model          string
+	APIKey         string
+	BaseURL        string
+	TimeoutSeconds int
+}
+
 type ResolvedSettings struct {
 	Site          *model.SiteSetting
 	BaseURL       string
 	PreviewSecret string
 	MaxUploadSize int64
 	Storage       ResolvedStorage
+	AI            ResolvedAI
 }
 
 type Service struct {
@@ -74,6 +84,14 @@ func (s *Service) Resolve() (*ResolvedSettings, error) {
 			S3SecretKey:  normalized.StorageS3SecretKey,
 			S3UseSSL:     normalized.StorageS3UseSSL,
 			S3PublicURL:  normalized.StorageS3PublicURL,
+		},
+		AI: ResolvedAI{
+			Enabled:        normalized.AIEnabled,
+			Provider:       normalized.AIProvider,
+			Model:          normalized.AIModel,
+			APIKey:         normalized.AIAPIKey,
+			BaseURL:        normalized.AIBaseURL,
+			TimeoutSeconds: normalized.AITimeoutSeconds,
 		},
 	}, nil
 }
@@ -141,6 +159,24 @@ func (s *Service) Validate(site *model.SiteSetting) error {
 			return fmt.Errorf("storageS3SecretKey cannot be empty")
 		}
 	}
+	if !site.AIEnabled {
+		return nil
+	}
+	if site.AIProvider != "openai_compatible" && site.AIProvider != "anthropic" && site.AIProvider != "gemini" {
+		return fmt.Errorf("aiProvider must be openai_compatible, anthropic or gemini")
+	}
+	if strings.TrimSpace(site.AIModel) == "" {
+		return fmt.Errorf("aiModel cannot be empty when ai is enabled")
+	}
+	if strings.TrimSpace(site.AIAPIKey) == "" {
+		return fmt.Errorf("aiApiKey cannot be empty when ai is enabled")
+	}
+	if site.AITimeoutSeconds <= 0 {
+		return fmt.Errorf("aiTimeoutSeconds must be greater than 0 when ai is enabled")
+	}
+	if site.AIProvider == "openai_compatible" && strings.TrimSpace(site.AIBaseURL) == "" {
+		return fmt.Errorf("aiBaseUrl cannot be empty when aiProvider is openai_compatible")
+	}
 	return nil
 }
 
@@ -164,6 +200,10 @@ func (s *Service) defaultSiteSetting() *model.SiteSetting {
 		StorageLocalBaseURL: "/uploads",
 		StorageS3Region:     "us-east-1",
 		StorageS3Bucket:     "md-blog",
+		AIEnabled:           false,
+		AIProvider:          "openai_compatible",
+		AIBaseURL:           "https://api.openai.com/v1",
+		AITimeoutSeconds:    15,
 	})
 }
 
@@ -196,6 +236,10 @@ func (s *Service) normalize(input *model.SiteSetting) *model.SiteSetting {
 	normalized.StorageS3AccessKey = strings.TrimSpace(normalized.StorageS3AccessKey)
 	normalized.StorageS3SecretKey = strings.TrimSpace(normalized.StorageS3SecretKey)
 	normalized.StorageS3PublicURL = trimTrailingSlash(normalized.StorageS3PublicURL, "")
+	normalized.AIProvider = strings.ToLower(strings.TrimSpace(normalized.AIProvider))
+	normalized.AIModel = strings.TrimSpace(normalized.AIModel)
+	normalized.AIAPIKey = strings.TrimSpace(normalized.AIAPIKey)
+	normalized.AIBaseURL = trimTrailingSlash(normalized.AIBaseURL, "")
 	if normalized.StorageS3PublicURL == "" {
 		normalized.StorageS3PublicURL = trimTrailingSlash(normalized.StoragePublicURL, "")
 	}
@@ -220,6 +264,15 @@ func (s *Service) normalize(input *model.SiteSetting) *model.SiteSetting {
 	}
 	if normalized.StorageS3Bucket == "" {
 		normalized.StorageS3Bucket = "md-blog"
+	}
+	if normalized.AIProvider == "" {
+		normalized.AIProvider = "openai_compatible"
+	}
+	if normalized.AIBaseURL == "" {
+		normalized.AIBaseURL = "https://api.openai.com/v1"
+	}
+	if normalized.AITimeoutSeconds <= 0 {
+		normalized.AITimeoutSeconds = 15
 	}
 	if normalized.MaxUploadSize <= 0 {
 		normalized.MaxUploadSize = 8 << 20

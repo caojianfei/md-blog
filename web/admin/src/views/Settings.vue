@@ -34,6 +34,12 @@ const settings = reactive({
   storageS3UseSsl: false,
   storageS3PublicUrl: "",
   storagePublicUrl: "",
+  aiEnabled: false,
+  aiProvider: "openai_compatible",
+  aiModel: "",
+  aiApiKey: "",
+  aiBaseUrl: "https://api.openai.com/v1",
+  aiTimeoutSeconds: 15,
 });
 
 const tabs = [
@@ -41,6 +47,7 @@ const tabs = [
   { key: "content", label: "内容", icon: FileText },
   { key: "seo", label: "SEO", icon: Info },
   { key: "storage", label: "存储", icon: HardDrive },
+  { key: "ai", label: "AI", icon: Monitor },
   { key: "security", label: "安全", icon: Shield },
 ];
 
@@ -54,6 +61,7 @@ const account = reactive({
   confirmPassword: "",
 });
 const showSettingsSave = computed(() => activeTab.value !== "security");
+const showAIBaseUrl = computed(() => settings.aiProvider === "openai_compatible");
 
 const isValidTab = (tab) => tabs.some((item) => item.key === tab);
 
@@ -110,6 +118,7 @@ const saveSettings = async () => {
     const payload = {
       ...settings,
       maxUploadSize: Number(settings.maxUploadSize) || 0,
+      aiTimeoutSeconds: Number(settings.aiTimeoutSeconds) || 0,
     };
     const data = await request("/api/admin/settings", { method: "POST", body: JSON.stringify(payload) });
     Object.assign(settings, data);
@@ -523,6 +532,83 @@ watch(activeTab, (value) => {
                 <input v-model="settings.storageS3UseSsl" type="checkbox" class="h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-500" />
                 使用 SSL
               </label>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <template v-else-if="activeTab === 'ai'">
+        <div class="border-b border-zinc-200 p-6 dark:border-zinc-800 xl:p-8">
+          <div class="mb-6 flex items-center gap-2">
+            <Monitor class="w-5 h-5 text-sky-500" />
+            <h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">AI 自动生成</h2>
+          </div>
+
+          <div class="space-y-6">
+            <label class="inline-flex items-center gap-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              <input v-model="settings.aiEnabled" type="checkbox" class="h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-500" />
+              启用文章摘要与 SEO 自动生成
+            </label>
+
+            <div class="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
+              <p>OpenAI 兼容可用于 OpenAI、DeepSeek、Qwen 兼容网关、Kimi 兼容网关、SiliconFlow、OpenRouter、Groq、Ollama 等。</p>
+              <p class="mt-2">Anthropic 对应 Claude，Gemini 对应 Google Gemini 官方接口。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-6 xl:p-8">
+          <div class="mb-6 flex items-center gap-2">
+            <Settings class="w-5 h-5 text-violet-500" />
+            <h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Provider 配置</h2>
+          </div>
+
+          <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <div>
+              <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Provider</label>
+              <select
+                v-model="settings.aiProvider"
+                class="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+              >
+                <option value="openai_compatible">OpenAI Compatible</option>
+                <option value="anthropic">Anthropic</option>
+                <option value="gemini">Gemini</option>
+              </select>
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">模型名称</label>
+              <input
+                v-model="settings.aiModel"
+                class="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                placeholder="例如: gpt-4.1-mini / claude-sonnet-4-20250514 / gemini-2.5-flash"
+              />
+            </div>
+            <div class="xl:col-span-2">
+              <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">API Key</label>
+              <input
+                v-model="settings.aiApiKey"
+                type="password"
+                class="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                placeholder="输入模型服务的访问密钥"
+              />
+            </div>
+            <div v-if="showAIBaseUrl" class="xl:col-span-2">
+              <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Base URL</label>
+              <input
+                v-model="settings.aiBaseUrl"
+                class="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                placeholder="https://api.openai.com/v1"
+              />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">超时（秒）</label>
+              <input
+                v-model.number="settings.aiTimeoutSeconds"
+                type="number"
+                min="1"
+                class="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+                placeholder="15"
+              />
             </div>
           </div>
         </div>

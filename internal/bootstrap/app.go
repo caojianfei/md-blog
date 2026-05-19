@@ -69,7 +69,7 @@ func New(cfg config.Config) (*App, error) {
 	settingsService := settingSvc.New(cfg, settingRepo)
 
 	markdownService := markdownSvc.New()
-	articleService := articleSvc.New(articleRepo, categoryRepo, tagRepo, markdownService)
+	articleService := articleSvc.New(articleRepo, categoryRepo, tagRepo, markdownService, settingsService)
 	authService := authSvc.New(adminRepo, sessionStore)
 	resolvedSettings, err := settingsService.Resolve()
 	if err != nil {

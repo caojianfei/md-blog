@@ -89,6 +89,12 @@ type SiteSetting struct {
 	StorageS3UseSSL   bool   `json:"storageS3UseSsl"`
 	StorageS3PublicURL string `json:"storageS3PublicUrl" gorm:"size:255"`
 	StoragePublicURL  string `json:"storagePublicUrl" gorm:"size:255"`
+	AIEnabled         bool   `json:"aiEnabled"`
+	AIProvider        string `json:"aiProvider" gorm:"size:40"`
+	AIModel           string `json:"aiModel" gorm:"size:120"`
+	AIAPIKey          string `json:"aiApiKey" gorm:"size:255"`
+	AIBaseURL         string `json:"aiBaseUrl" gorm:"size:255"`
+	AITimeoutSeconds  int    `json:"aiTimeoutSeconds"`
 }
 
 type AdminUser struct {

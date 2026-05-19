@@ -106,7 +106,7 @@ func (h *Handler) SaveArticle(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, response{Code: 400, Message: "invalid payload"})
 		return
 	}
-	article, err := h.c.Article.Save(input)
+	article, err := h.c.Article.Save(r.Context(), input)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, response{Code: 400, Message: err.Error()})
 		return

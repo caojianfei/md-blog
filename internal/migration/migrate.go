@@ -115,6 +115,12 @@ func defaultSiteSetting(cfg config.Config) model.SiteSetting {
 		StorageS3UseSSL:     getSettingBoolEnv("STORAGE_S3_USE_SSL", false),
 		StorageS3PublicURL:  publicURL,
 		StoragePublicURL:    publicURL,
+		AIEnabled:           false,
+		AIProvider:          "openai_compatible",
+		AIModel:             "",
+		AIAPIKey:            "",
+		AIBaseURL:           "https://api.openai.com/v1",
+		AITimeoutSeconds:    15,
 	}
 }
 
@@ -154,6 +160,12 @@ func mergeSiteSetting(setting *model.SiteSetting, defaults model.SiteSetting) bo
 	applyString(&setting.StorageS3PublicURL, defaults.StorageS3PublicURL)
 	if strings.TrimSpace(setting.StoragePublicURL) == "" && strings.TrimSpace(setting.StorageS3PublicURL) != "" {
 		setting.StoragePublicURL = strings.TrimSpace(setting.StorageS3PublicURL)
+		changed = true
+	}
+	applyString(&setting.AIProvider, defaults.AIProvider)
+	applyString(&setting.AIBaseURL, defaults.AIBaseURL)
+	if setting.AITimeoutSeconds <= 0 {
+		setting.AITimeoutSeconds = defaults.AITimeoutSeconds
 		changed = true
 	}
 	if setting.MaxUploadSize <= 0 {
