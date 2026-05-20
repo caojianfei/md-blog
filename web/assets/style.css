@@ -1243,6 +1243,15 @@ input {
   background: var(--surface-accent);
 }
 
+.article-nav__empty {
+  display: block;
+  padding: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  opacity: 0.4;
+  cursor: default;
+}
+
 .article-nav__label {
   display: block;
   margin-bottom: 8px;

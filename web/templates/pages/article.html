@@ -32,14 +32,24 @@
       <span class="article-nav__label">上一篇</span>
       <span class="article-nav__title">{{.PrevArticle.Title}}</span>
     </a>
-    {{else}}<div></div>{{end}}
+    {{else}}
+    <div class="article-nav__empty">
+      <span class="article-nav__label">上一篇</span>
+      <span class="article-nav__title">没有更多了</span>
+    </div>
+    {{end}}
 
     {{if .NextArticle}}
     <a href="/posts/{{pathEscape .NextArticle.Slug}}">
       <span class="article-nav__label">下一篇</span>
       <span class="article-nav__title">{{.NextArticle.Title}}</span>
     </a>
-    {{else}}<div></div>{{end}}
+    {{else}}
+    <div class="article-nav__empty">
+      <span class="article-nav__label">下一篇</span>
+      <span class="article-nav__title">没有更多了</span>
+    </div>
+    {{end}}
   </div>
 </section>
 {{end}}

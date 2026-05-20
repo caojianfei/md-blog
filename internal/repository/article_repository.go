@@ -233,10 +233,10 @@ func (r *ArticleRepository) PrevNext(article *model.Article) (*model.Article, *m
 	if article.PublishedAt == nil {
 		return nil, nil, nil
 	}
-	if err := r.db.Where("status = ? AND published_at < ?", model.ArticleStatusPublished, article.PublishedAt).Order("published_at DESC").First(&prev).Error; err == nil {
+	if err := r.db.Where("status = ? AND published_at > ?", model.ArticleStatusPublished, article.PublishedAt).Order("published_at ASC").First(&prev).Error; err == nil {
 		prevPtr = &prev
 	}
-	if err := r.db.Where("status = ? AND published_at > ?", model.ArticleStatusPublished, article.PublishedAt).Order("published_at ASC").First(&next).Error; err == nil {
+	if err := r.db.Where("status = ? AND published_at < ?", model.ArticleStatusPublished, article.PublishedAt).Order("published_at DESC").First(&next).Error; err == nil {
 		nextPtr = &next
 	}
 	return prevPtr, nextPtr, nil
