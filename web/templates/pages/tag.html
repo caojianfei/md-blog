@@ -2,7 +2,6 @@
 {{define "content"}}
 <section class="container page-shell">
   <div class="page-panel">
-    <span class="eyebrow">Tag Context</span>
     <h1 class="page-heading"># {{.CurrentTag.Name}}</h1>
     <p class="page-description">{{.CurrentTag.Description}}</p>
   </div>
@@ -16,9 +15,9 @@
   {{end}}
 
   <div class="pagination">
-    {{if gt .CurrentPage 1}}<a href="/tags/{{pathEscape .CurrentTag.Slug}}?page={{dec .CurrentPage}}">上一页</a>{{end}}
-    <span>第 {{.CurrentPage}} / {{.TotalPages}} 页</span>
-    {{if lt .CurrentPage .TotalPages}}<a href="/tags/{{pathEscape .CurrentTag.Slug}}?page={{inc .CurrentPage}}">下一页</a>{{end}}
+    {{if gt .CurrentPage 1}}<a href="/tags/{{pathEscape .CurrentTag.Slug}}?page={{dec .CurrentPage}}">← 上一页</a>{{end}}
+    <span class="pagination__current">{{.CurrentPage}} / {{.TotalPages}}</span>
+    {{if lt .CurrentPage .TotalPages}}<a href="/tags/{{pathEscape .CurrentTag.Slug}}?page={{inc .CurrentPage}}">下一页 →</a>{{end}}
   </div>
 </section>
 {{end}}

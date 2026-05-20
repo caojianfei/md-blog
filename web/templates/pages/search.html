@@ -2,7 +2,6 @@
 {{define "content"}}
 <section class="container page-shell">
   <div class="page-panel">
-    <span class="eyebrow">Search Index</span>
     <h1 class="page-heading">搜索</h1>
     <p class="page-description">按标题、摘要和正文查找内容，结果会沿用首页的技术流式列表。</p>
     <form class="search-form" action="/search" method="get">
@@ -15,8 +14,11 @@
   <div class="article-list">
     {{range .Articles}}{{template "article_card" .}}{{end}}
   </div>
-  {{else}}
-  <div class="empty-state">没有找到与“{{.Query}}”相关的文章。</div>
+  {{else if .Query}}
+  <div class="empty-state search-empty">
+    <p>没有找到与「{{.Query}}」相关的文章。</p>
+    <p class="search-empty__hint">换个关键词试试，或者 <a href="/">返回首页</a> 浏览所有文章。</p>
+  </div>
   {{end}}
 </section>
 {{end}}

@@ -37,6 +37,15 @@ func NewRenderer(templateFS fs.FS) (*Renderer, error) {
 			}
 			return v - 1
 		},
+		"tagWeight": func(count int64) string {
+			if count >= 5 {
+				return "high"
+			}
+			if count >= 2 {
+				return "medium"
+			}
+			return "low"
+		},
 	}
 
 	pageFiles, err := fs.Glob(templateFS, "web/templates/pages/*.html")

@@ -72,6 +72,8 @@ function initCodeBlocks() {
         await navigator.clipboard.writeText(code.innerText);
         const original = button.textContent;
         button.textContent = "已复制";
+        button.style.transform = "scale(0.9)";
+        window.setTimeout(() => { button.style.transform = ""; }, 150);
         window.setTimeout(() => {
           button.textContent = original;
         }, 1600);

@@ -15,7 +15,7 @@
       </div>
       <h1>{{.Article.Title}}</h1>
       {{if .Article.Excerpt}}<p class="article-summary">{{.Article.Excerpt}}</p>{{end}}
-      {{if .Article.CoverImage}}<img class="cover" src="{{.Article.CoverImage}}" alt="{{.Article.Title}}">{{end}}
+      {{if .Article.CoverImage}}<img class="cover" src="{{.Article.CoverImage}}" alt="{{.Article.Title}}" loading="lazy">{{end}}
       {{if .Article.Tags}}
       <div class="article-shell__tags tag-cloud">
         {{range .Article.Tags}}<a class="tag-chip" href="/tags/{{pathEscape .Slug}}"># {{.Name}}</a>{{end}}
@@ -32,18 +32,14 @@
       <span class="article-nav__label">上一篇</span>
       <span class="article-nav__title">{{.PrevArticle.Title}}</span>
     </a>
-    {{else}}
-    <div class="empty-state">没有上一篇</div>
-    {{end}}
+    {{else}}<div></div>{{end}}
 
     {{if .NextArticle}}
     <a href="/posts/{{pathEscape .NextArticle.Slug}}">
       <span class="article-nav__label">下一篇</span>
       <span class="article-nav__title">{{.NextArticle.Title}}</span>
     </a>
-    {{else}}
-    <div class="empty-state">没有下一篇</div>
-    {{end}}
+    {{else}}<div></div>{{end}}
   </div>
 </section>
 {{end}}

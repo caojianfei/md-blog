@@ -2,7 +2,6 @@
 {{define "content"}}
 <section class="container page-shell">
   <div class="page-panel">
-    <span class="eyebrow">Category Context</span>
     <h1 class="page-heading">{{.CurrentCategory.Name}}</h1>
     <p class="page-meta">{{.CurrentCategory.ArticleCount}} 篇已发布文章</p>
     <p class="page-description">{{.CurrentCategory.Description}}</p>
@@ -17,9 +16,9 @@
   {{end}}
 
   <div class="pagination">
-    {{if gt .CurrentPage 1}}<a href="/categories/{{pathEscape .CurrentCategory.Slug}}?page={{dec .CurrentPage}}">上一页</a>{{end}}
-    <span>第 {{.CurrentPage}} / {{.TotalPages}} 页</span>
-    {{if lt .CurrentPage .TotalPages}}<a href="/categories/{{pathEscape .CurrentCategory.Slug}}?page={{inc .CurrentPage}}">下一页</a>{{end}}
+    {{if gt .CurrentPage 1}}<a href="/categories/{{pathEscape .CurrentCategory.Slug}}?page={{dec .CurrentPage}}">← 上一页</a>{{end}}
+    <span class="pagination__current">{{.CurrentPage}} / {{.TotalPages}}</span>
+    {{if lt .CurrentPage .TotalPages}}<a href="/categories/{{pathEscape .CurrentCategory.Slug}}?page={{inc .CurrentPage}}">下一页 →</a>{{end}}
   </div>
 </section>
 {{end}}

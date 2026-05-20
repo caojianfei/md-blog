@@ -3,7 +3,6 @@
 <section class="container section-stack">
   <div class="hero-grid">
     <section class="hero-panel">
-      <span class="eyebrow">High-End Minimalist Tech Aesthetics</span>
       <h1>{{.Site.HeroTitle}}</h1>
       <p>{{.Site.HeroDescription}}</p>
       <div class="pixel-cat-stage" data-pixel-cat>
@@ -16,7 +15,7 @@
         <span class="terminal-dot"></span>
         <span class="terminal-dot"></span>
         <span class="terminal-dot"></span>
-        <span class="terminal-title">live session</span>
+        <span class="terminal-title">终端</span>
       </div>
       <div class="terminal-body">
         <div class="terminal-output" data-terminal-output>
@@ -41,32 +40,9 @@
     </aside>
   </div>
 
-  <div class="summary-strip">
-    <span class="eyebrow">System Entry</span>
-    <div class="summary-grid">
-      <div class="stat-card">
-        <span class="stat-card__label">current page</span>
-        <span class="stat-card__value">{{.CurrentPage}} / {{.TotalPages}}</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-card__label">category index</span>
-        <span class="stat-card__value">{{len .Categories}}</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-card__label">tag index</span>
-        <span class="stat-card__value">{{len .Tags}}</span>
-      </div>
-      <div class="stat-card">
-        <span class="stat-card__label">archive buckets</span>
-        <span class="stat-card__value">{{.ArchiveCount}}</span>
-      </div>
-    </div>
-  </div>
-
   <div class="content-grid">
     <div class="content-grid__header">
-      <span class="eyebrow">Latest Posts</span>
-      <h2 class="section-heading">Flow List</h2>
+      <h2 class="section-heading">文章列表</h2>
     </div>
 
     <section class="section-stack content-grid__main">
@@ -78,9 +54,9 @@
       <div class="empty-state">还没有已发布的文章。</div>
       {{end}}
       <div class="pagination">
-        {{if gt .CurrentPage 1}}<a href="/?page={{dec .CurrentPage}}">上一页</a>{{end}}
-        <span>第 {{.CurrentPage}} / {{.TotalPages}} 页</span>
-        {{if lt .CurrentPage .TotalPages}}<a href="/?page={{inc .CurrentPage}}">下一页</a>{{end}}
+        {{if gt .CurrentPage 1}}<a href="/?page={{dec .CurrentPage}}">← 上一页</a>{{end}}
+        <span class="pagination__current">{{.CurrentPage}} / {{.TotalPages}}</span>
+        {{if lt .CurrentPage .TotalPages}}<a href="/?page={{inc .CurrentPage}}">下一页 →</a>{{end}}
       </div>
     </section>
 
@@ -102,7 +78,7 @@
       <section class="sidebar-panel">
         <h3>标签</h3>
         <div class="tag-cloud">
-          {{range .Tags}}<a class="tag-chip" href="/tags/{{pathEscape .Slug}}"># {{.Name}}</a>{{end}}
+          {{range .Tags}}<a class="tag-chip" href="/tags/{{pathEscape .Slug}}" data-weight="{{tagWeight .ArticleCount}}"># {{.Name}}</a>{{end}}
         </div>
       </section>
       <section class="sidebar-panel">
@@ -120,7 +96,6 @@
     <div class="overlay-modal__panel" role="dialog" aria-modal="true" aria-labelledby="category-modal-title" tabindex="-1">
       <div class="overlay-modal__header">
         <div>
-          <span class="eyebrow">Category Index</span>
           <h3 id="category-modal-title">全部分类</h3>
         </div>
         <button class="overlay-modal__close" type="button" aria-label="关闭" data-category-modal-close>&times;</button>
