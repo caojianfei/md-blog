@@ -450,6 +450,10 @@ input {
   gap: 18px;
 }
 
+.home-stack {
+  gap: 0px;
+}
+
 .section-heading {
   margin: 0 0 8px;
   font-size: 1rem;
