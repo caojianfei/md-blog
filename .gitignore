@@ -32,3 +32,4 @@ Thumbs.db
 .trae/*
 !.trae/documents/
 !.trae/documents/**
+.claude/

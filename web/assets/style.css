@@ -810,6 +810,11 @@ input {
   gap: 24px;
 }
 
+.about-shell {
+  max-width: 860px;
+  margin-inline: auto;
+}
+
 .page-heading {
   font-size: clamp(2rem, 4vw, 3.4rem);
 }
@@ -1567,7 +1572,6 @@ html[data-theme="system"] .ow {
 
 @media (max-width: 1080px) {
   .content-grid,
-  .about-grid,
   .article-layout,
   .hero-grid {
     grid-template-columns: 1fr;

@@ -1,58 +1,8 @@
 {{define "about"}}{{template "base" .}}{{end}}
 {{define "content"}}
 <section class="container about-shell">
-  <div class="page-panel">
-    <h1 class="page-heading">关于我</h1>
-    <p class="page-description">用真实站点数据组织成开发者 Dashboard，而不是传统简历版式。</p>
-  </div>
-
-  <div class="about-grid">
-    <article class="about-panel">
-      <h2>个人介绍</h2>
-      <div class="about-panel__content article-content">{{safe .AboutHTML}}</div>
-    </article>
-
-    <aside class="about-sidebar">
-      <section class="sidebar-panel">
-        <h3>站点数据</h3>
-        <div class="summary-grid">
-          <div class="stat-card">
-            <span class="stat-card__label">published</span>
-            <span class="stat-card__value">{{.PublishedCount}}</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-card__label">categories</span>
-            <span class="stat-card__value">{{len .Categories}}</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-card__label">tags</span>
-            <span class="stat-card__value">{{len .Tags}}</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-card__label">archive buckets</span>
-            <span class="stat-card__value">{{.ArchiveCount}}</span>
-          </div>
-        </div>
-      </section>
-
-      <section class="sidebar-panel">
-        <h3>运行时</h3>
-        <div class="sidebar-list">
-          <div class="archive-item"><time>theme</time><strong>{{if .Site.ThemeDefault}}{{.Site.ThemeDefault}}{{else}}system{{end}}</strong></div>
-          <div class="archive-item"><time>storage</time><strong>{{if .Site.StorageDriver}}{{.Site.StorageDriver}}{{else}}local{{end}}</strong></div>
-          <div class="archive-item"><time>subtitle</time><strong>{{.Site.SiteSubtitle}}</strong></div>
-        </div>
-      </section>
-
-      <section class="sidebar-panel">
-        <h3>联系方式</h3>
-        <div class="about-links">
-          {{if .Site.GithubURL}}<a href="{{.Site.GithubURL}}" target="_blank" rel="noreferrer">github {{.Site.GithubURL}}</a>{{end}}
-          <a href="/rss.xml">rss /rss.xml</a>
-          <a href="/">site {{.Site.SiteName}}</a>
-        </div>
-      </section>
-    </aside>
-  </div>
+  <article class="about-panel">
+    <div class="article-content">{{safe .AboutHTML}}</div>
+  </article>
 </section>
 {{end}}
