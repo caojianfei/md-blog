@@ -33,3 +33,5 @@ Thumbs.db
 !.trae/documents/
 !.trae/documents/**
 .claude/
+.agents/
+skills-lock.json
