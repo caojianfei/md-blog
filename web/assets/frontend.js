@@ -177,6 +177,52 @@ function initToc() {
   activate(headings[0].target.id);
 }
 
+function initMobileTabbar() {
+  const tabbar = document.querySelector("[data-mobile-tabbar]");
+  if (!tabbar) {
+    return;
+  }
+
+  const mobileMediaQuery = window.matchMedia("(max-width: 820px)");
+  let lastScrollY = window.scrollY;
+  let ticking = false;
+
+  const syncVisibility = () => {
+    if (!mobileMediaQuery.matches) {
+      tabbar.classList.remove("is-hidden");
+      lastScrollY = window.scrollY;
+      return;
+    }
+
+    const currentScrollY = window.scrollY;
+    const delta = currentScrollY - lastScrollY;
+
+    if (currentScrollY <= 16 || delta <= -10) {
+      tabbar.classList.remove("is-hidden");
+    } else if (delta >= 10) {
+      tabbar.classList.add("is-hidden");
+    }
+
+    lastScrollY = currentScrollY;
+  };
+
+  const onScroll = () => {
+    if (ticking) {
+      return;
+    }
+
+    ticking = true;
+    window.requestAnimationFrame(() => {
+      syncVisibility();
+      ticking = false;
+    });
+  };
+
+  syncVisibility();
+  window.addEventListener("scroll", onScroll, { passive: true });
+  mobileMediaQuery.addEventListener("change", syncVisibility);
+}
+
 // 终端交互
 class Terminal {
   constructor(element) {
@@ -547,6 +593,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initCodeBlocks();
   initCategoryModal();
   initToc();
+  initMobileTabbar();
   const terminalElement = document.querySelector('[data-terminal]');
   if (terminalElement) {
     new Terminal(terminalElement);
