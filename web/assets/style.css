@@ -1751,3 +1751,227 @@ html[data-theme="dark"] .preview-banner {
 .pixel-cat-bubble.is-visible {
   opacity: 1;
 }
+
+/* =====================================================================
+   关于页 · 追加到 web/assets/style.css 末尾
+   依赖：已有的 :root / [data-theme="dark"] CSS 变量
+   ===================================================================== */
+
+/* 关于页：覆盖 .about-shell 的 860px 限制，与首页/归档页宽度对齐 */
+.about-shell--wide {
+  max-width: none;
+}
+
+.about-panel--lg {
+  padding: 40px 44px;
+}
+
+/* 头像占位框 —— 斜纹底，文件名风格的占位字 */
+.avatar-frame {
+  width: 96px;
+  height: 96px;
+  border: 1px solid var(--border);
+  background:
+    repeating-linear-gradient(45deg,
+      var(--surface-soft) 0 6px,
+      transparent 6px 12px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.66rem;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
+.avatar-frame--lg {
+  width: 140px;
+  height: 140px;
+  font-size: 0.7rem;
+}
+
+.avatar-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 头部：头像 + 标题区 */
+.about-head {
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+  margin-bottom: 28px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--border);
+}
+
+.about-head__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.about-head__eyebrow {
+  margin: 4px 0 10px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.78rem;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.about-head h1 {
+  margin: 0 0 12px;
+  font-size: clamp(2rem, 3.5vw, 2.8rem);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  color: var(--text-strong);
+}
+
+.about-head__tagline {
+  margin: 0 0 16px;
+  color: var(--text-soft);
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.about-head__meta {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.78rem;
+  color: var(--text-soft);
+}
+
+.about-head__meta span::before {
+  content: "▸";
+  margin-right: 6px;
+  color: var(--primary);
+}
+
+/* 正文 + 侧栏 两列网格 */
+.about-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 36px;
+  align-items: start;
+}
+
+.about-prose p:first-child {
+  color: var(--text-strong);
+  font-size: 1.06rem;
+}
+
+/* 让 markdown 里的 blockquote 自动获得 "now callout" 的视觉 */
+.about-prose blockquote {
+  margin: 24px 0;
+  padding: 16px 18px;
+  border-left: 3px solid var(--primary);
+  background: var(--surface-accent);
+  color: var(--text);
+}
+
+.about-prose blockquote p {
+  margin: 0;
+  line-height: 1.7;
+  color: var(--text);
+}
+
+.about-prose blockquote p + p {
+  margin-top: 8px;
+}
+
+.about-prose blockquote strong:first-child {
+  display: block;
+  margin-bottom: 6px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* 侧栏 */
+.about-side {
+  display: grid;
+  gap: 18px;
+  position: sticky;
+  top: 96px;
+}
+
+.about-side__block h4 {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-soft);
+  font-weight: 500;
+}
+
+.links-list {
+  display: grid;
+  gap: 8px;
+}
+
+.links-list a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  color: var(--text);
+  font-size: 0.92rem;
+}
+
+.links-list a:hover {
+  background: var(--surface-accent);
+  border-color: var(--border-strong);
+}
+
+.links-list a > span:last-child {
+  color: var(--text-soft);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.78rem;
+  text-align: right;
+}
+
+.stack-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.stack-chips span {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-strong);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.78rem;
+  color: var(--text-soft);
+}
+
+/* 响应式 */
+@media (max-width: 880px) {
+  .about-panel--lg {
+    padding: 28px 22px;
+  }
+  .about-head {
+    flex-direction: column;
+    gap: 18px;
+  }
+  .about-body {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .about-side {
+    position: static;
+  }
+}

@@ -1,8 +1,80 @@
 {{define "about"}}{{template "base" .}}{{end}}
 {{define "content"}}
-<section class="container about-shell">
-  <article class="about-panel">
-    <div class="article-content">{{safe .AboutHTML}}</div>
+{{/* ──────────────────────────────────────────────────────────────────
+     关于页 · 个人信息
+     直接编辑下面的字面量来更新姓名 / 头像 / 标签 / 侧栏。
+     主体 Markdown 内容仍由后台 SiteSetting.AboutContent 维护。
+   ────────────────────────────────────────────────────────────────── */}}
+<section class="container about-shell about-shell--wide">
+  <article class="about-panel about-panel--lg">
+    <header class="about-head">
+      <div class="avatar-frame avatar-frame--lg" aria-hidden="true">
+        <span>avatar.png</span>
+      </div>
+      <div class="about-head__body">
+        <p class="about-head__eyebrow">// about · 关于</p>
+        <h1>你好，我叫张随风。</h1>
+        <p class="about-head__tagline">做后端、写工具、偶尔做点设计。喜欢把日常用的小东西，做到自己愿意每天打开。</p>
+        <div class="about-head__meta">
+          <span>上海 / Asia / Shanghai</span>
+          <span>工程师 · 独立开发者</span>
+          <span>UTC+8</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="about-body">
+      <div class="about-prose article-content">
+        {{safe .AboutHTML}}
+      </div>
+
+      <aside class="about-side">
+        <div class="about-side__block">
+          <h4>// links</h4>
+          <div class="links-list">
+            {{if .Site.GithubURL}}
+            <a href="{{.Site.GithubURL}}" target="_blank" rel="noreferrer">
+              <span>GitHub</span><span>@suifeng</span>
+            </a>
+            {{end}}
+            <a href="https://x.com/suifeng_dev" target="_blank" rel="noreferrer">
+              <span>Twitter / X</span><span>@suifeng_dev</span>
+            </a>
+            <a href="mailto:hi@example.com">
+              <span>Email</span><span>hi@example.com</span>
+            </a>
+            <a href="/rss.xml" target="_blank">
+              <span>RSS</span><span>/rss.xml</span>
+            </a>
+          </div>
+        </div>
+
+        <div class="about-side__block">
+          <h4>// stack</h4>
+          <div class="stack-chips">
+            <span>Go</span>
+            <span>TypeScript</span>
+            <span>Vue</span>
+            <span>PostgreSQL</span>
+            <span>Redis</span>
+            <span>Docker</span>
+            <span>Linux</span>
+            <span>nginx</span>
+          </div>
+        </div>
+
+        <div class="about-side__block">
+          <h4>// uses</h4>
+          <div class="stack-chips">
+            <span>Neovim</span>
+            <span>tmux</span>
+            <span>iTerm2</span>
+            <span>Obsidian</span>
+            <span>MBP 14&quot;</span>
+          </div>
+        </div>
+      </aside>
+    </div>
   </article>
 </section>
 {{end}}
