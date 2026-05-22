@@ -1078,7 +1078,6 @@ input {
 .article-shell__meta,
 .article-shell__tags,
 .article-nav__label,
-.article-content .code-block__label,
 .article-content .code-copy-button {
   font-family: "JetBrains Mono", ui-monospace, monospace;
 }
@@ -1284,8 +1283,9 @@ input {
 }
 
 .code-block {
-  margin: 1.5rem 0;
+  margin: 1.25rem 0;
   border: 1px solid var(--border);
+  border-radius: 6px;
   background: var(--code-bg);
   overflow: hidden;
 }
@@ -1294,27 +1294,34 @@ input {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
+  gap: 8px;
+  padding: 6px 12px;
   border-bottom: 1px solid var(--border);
   background: var(--code-header);
 }
 
-.code-block__label,
-.code-copy-button {
-  font-size: 0.78rem;
-  text-transform: lowercase;
-}
-
 .code-block__label {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 80%, transparent);
   color: var(--text-soft);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 500;
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
 }
 
 .code-copy-button {
-  padding: 6px 10px;
+  padding: 3px 8px;
   border: 1px solid var(--border);
-  background: var(--surface-strong);
+  border-radius: 4px;
+  background: transparent;
   color: var(--text-soft);
+  font-size: 0.72rem;
+  text-transform: lowercase;
   transition:
     border-color 0.2s ease-in-out,
     background-color 0.2s ease-in-out,
@@ -1333,14 +1340,15 @@ input {
 
 .code-block .chroma {
   margin: 0;
-  padding: 16px;
+  padding: 12px 14px;
   background: transparent;
   color: inherit;
 }
 
 .code-block .chroma code {
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 0.92rem;
+  font-size: 0.875rem;
+  line-height: 1.6;
 }
 
 .code-block .chroma .line {
@@ -1348,9 +1356,9 @@ input {
 }
 
 .code-block .chroma .ln {
-  width: 2.6rem;
-  flex: 0 0 2.6rem;
-  margin-right: 1rem;
+  width: 2.4rem;
+  flex: 0 0 2.4rem;
+  margin-right: 0.875rem;
   color: var(--code-line);
   user-select: none;
 }
