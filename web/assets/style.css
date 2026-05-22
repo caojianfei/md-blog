@@ -1814,6 +1814,10 @@ html[data-theme="system"] .ow {
   .article-toc:not([data-open]) .toc-list {
     display: none;
   }
+
+  .hero-grid {
+    display: none;
+  }
 }
 
 /* Draft preview banner */
