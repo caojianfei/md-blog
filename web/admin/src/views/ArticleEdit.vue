@@ -495,9 +495,6 @@ onUnmounted(() => {
               {{ statusLabel }}
             </span>
           </div>
-          <p class="mt-1 hidden text-sm text-zinc-500 dark:text-zinc-400 md:block">
-            桌面端强化双栏工作区，正文编辑、预览与文章设置分层呈现。
-          </p>
         </div>
       </div>
 
