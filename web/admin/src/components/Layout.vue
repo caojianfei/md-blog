@@ -155,7 +155,7 @@ onMounted(async () => {
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 flex flex-col min-w-0 h-[calc(100vh-60px)] md:h-screen overflow-y-auto bg-zinc-100/70 dark:bg-zinc-950">
+    <main class="flex-1 flex flex-col min-w-0 h-[calc(100vh-60px)] md:h-screen overflow-y-auto overflow-x-hidden bg-zinc-100/70 dark:bg-zinc-950">
       <div
         :class="[
           'flex-1 w-full min-w-0',

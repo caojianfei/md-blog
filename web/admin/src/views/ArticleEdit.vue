@@ -473,7 +473,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="admin-workspace-shell h-full min-h-0 flex flex-col gap-4">
+  <div class="admin-workspace-shell h-full min-h-0 min-w-0 flex flex-col gap-4">
     <div class="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 md:px-5 xl:flex-row xl:items-center xl:justify-between">
       <div class="flex min-w-0 items-center gap-3">
         <button
@@ -518,76 +518,8 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div class="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_23rem]">
-      <section class="flex min-h-0 flex-col gap-4">
-        <div class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 md:p-5">
-          <div class="min-w-0">
-            <label class="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              标题 <span class="text-red-500">*</span>
-            </label>
-            <input
-              v-model="editor.title"
-              class="block w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 md:text-lg"
-              placeholder="输入文章标题"
-            />
-          </div>
-        </div>
-
-        <div class="flex min-h-[520px] flex-1 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <div class="relative shrink-0">
-            <MarkdownToolbar
-              v-model:preview-mode="previewMode"
-              :can-split="canUseSplitMode"
-              :message="editorMessage"
-              :is-emoji-open="isEmojiPickerOpen"
-              @action="handleToolbarAction"
-              @toggle-emoji="toggleEmojiPicker"
-              @upload-image="handleToolbarImageUpload"
-            />
-
-            <div v-if="isEmojiPickerOpen" class="absolute left-2 top-full z-20 mt-2">
-              <EmojiPicker @select="handleEmojiSelect" />
-            </div>
-          </div>
-
-          <div
-            :class="[
-              'min-h-0 flex-1 overflow-hidden',
-              previewMode === 'split' ? 'lg:grid lg:grid-cols-2' : 'flex'
-            ]"
-          >
-            <div
-              v-if="previewMode !== 'preview'"
-              class="min-h-0 min-w-0 flex-1"
-              :class="previewMode === 'split' ? 'border-b border-zinc-200 dark:border-zinc-800 lg:border-b-0 lg:border-r' : ''"
-            >
-              <textarea
-                ref="editorTextarea"
-                v-model="editor.content"
-                class="h-full min-h-0 w-full resize-none bg-white px-4 py-4 font-mono text-sm leading-relaxed text-zinc-900 outline-none dark:bg-zinc-900 dark:text-zinc-100 md:px-5"
-                placeholder="在此输入 Markdown 内容..."
-                @click="syncEditorSelection"
-                @focus="syncEditorSelection"
-                @keyup="syncEditorSelection"
-                @select="syncEditorSelection"
-              ></textarea>
-            </div>
-
-            <MarkdownPreview
-              v-if="previewMode !== 'edit'"
-              :content="editor.content"
-              class="min-h-0 min-w-0 flex-1"
-            />
-          </div>
-
-          <div class="flex shrink-0 items-center justify-between border-t border-zinc-200 bg-zinc-50 px-4 py-2 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-400">
-            <span>{{ previewModeLabel }}</span>
-            <span>共 {{ editorWords }} 字</span>
-          </div>
-        </div>
-      </section>
-
-      <aside class="min-h-0">
+    <div class="grid min-h-0 min-w-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_23rem]">
+      <aside class="min-h-0 min-w-0 lg:order-last">
         <div class="flex min-h-0 flex-col gap-4 lg:sticky lg:top-4">
           <div class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900 lg:max-h-[calc(100vh-2rem)]">
             <button
@@ -663,6 +595,74 @@ onUnmounted(() => {
           </div>
         </div>
       </aside>
+
+      <section class="flex min-h-0 min-w-0 flex-col gap-4">
+        <div class="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 md:p-5">
+          <div class="min-w-0">
+            <label class="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              标题 <span class="text-red-500">*</span>
+            </label>
+            <input
+              v-model="editor.title"
+              class="block w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-base text-zinc-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 md:text-lg"
+              placeholder="输入文章标题"
+            />
+          </div>
+        </div>
+
+        <div class="flex min-h-[300px] md:min-h-[520px] flex-1 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div class="relative shrink-0">
+            <MarkdownToolbar
+              v-model:preview-mode="previewMode"
+              :can-split="canUseSplitMode"
+              :message="editorMessage"
+              :is-emoji-open="isEmojiPickerOpen"
+              @action="handleToolbarAction"
+              @toggle-emoji="toggleEmojiPicker"
+              @upload-image="handleToolbarImageUpload"
+            />
+
+            <div v-if="isEmojiPickerOpen" class="absolute left-2 top-full z-20 mt-2">
+              <EmojiPicker @select="handleEmojiSelect" />
+            </div>
+          </div>
+
+          <div
+            :class="[
+              'min-h-0 flex-1 overflow-hidden',
+              previewMode === 'split' ? 'lg:grid lg:grid-cols-2' : 'flex'
+            ]"
+          >
+            <div
+              v-if="previewMode !== 'preview'"
+              class="min-h-0 min-w-0 flex-1"
+              :class="previewMode === 'split' ? 'border-b border-zinc-200 dark:border-zinc-800 lg:border-b-0 lg:border-r' : ''"
+            >
+              <textarea
+                ref="editorTextarea"
+                v-model="editor.content"
+                class="h-full min-h-0 w-full resize-none bg-white px-4 py-4 font-mono text-sm leading-relaxed text-zinc-900 outline-none dark:bg-zinc-900 dark:text-zinc-100 md:px-5"
+                placeholder="在此输入 Markdown 内容..."
+                @click="syncEditorSelection"
+                @focus="syncEditorSelection"
+                @keyup="syncEditorSelection"
+                @select="syncEditorSelection"
+              ></textarea>
+            </div>
+
+            <MarkdownPreview
+              v-if="previewMode !== 'edit'"
+              :content="editor.content"
+              class="min-h-0 min-w-0 flex-1"
+            />
+          </div>
+
+          <div class="flex shrink-0 items-center justify-between border-t border-zinc-200 bg-zinc-50 px-4 py-2 text-xs text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-400">
+            <span>{{ previewModeLabel }}</span>
+            <span>共 {{ editorWords }} 字</span>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 </template>
