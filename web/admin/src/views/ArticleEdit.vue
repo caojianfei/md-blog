@@ -71,15 +71,22 @@ const syncResponsiveEditorState = (forceDefault = false) => {
   }
 
   const width = window.innerWidth;
+  const wasDesktop = viewportWidth.value >= TABLET_BREAKPOINT;
   viewportWidth.value = width;
+  const isDesktop = width >= TABLET_BREAKPOINT;
 
   if (forceDefault) {
     previewMode.value = getDefaultPreviewMode(width);
-  } else if (width < TABLET_BREAKPOINT && previewMode.value === "split") {
-    previewMode.value = "edit";
+    isSettingsOpen.value = isDesktop;
+  } else {
+    if (width < TABLET_BREAKPOINT && previewMode.value === "split") {
+      previewMode.value = "edit";
+    }
+    // 仅在跨越断点时才自动更新，避免移动端键盘弹出触发 resize 导致设置面板被收起
+    if (wasDesktop !== isDesktop) {
+      isSettingsOpen.value = isDesktop;
+    }
   }
-
-  isSettingsOpen.value = width >= TABLET_BREAKPOINT;
 };
 
 const handleWindowResize = () => {
