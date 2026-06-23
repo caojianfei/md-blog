@@ -14,6 +14,7 @@ type Config struct {
 	App            AppConfig
 	Database       DatabaseConfig
 	BootstrapAdmin AdminConfig
+	Turnstile      TurnstileConfig
 }
 
 type AppConfig struct {
@@ -38,6 +39,11 @@ type DatabaseConfig struct {
 type AdminConfig struct {
 	Username string
 	Password string
+}
+
+type TurnstileConfig struct {
+	SiteKey   string
+	SecretKey string
 }
 
 func Load(configPath string) (Config, error) {
@@ -135,6 +141,8 @@ func newConfigReader() (*viper.Viper, error) {
 		"database.conn_max_lifetime": "DB_CONN_MAX_LIFETIME",
 		"bootstrap_admin.username":   "ADMIN_USERNAME",
 		"bootstrap_admin.password":   "ADMIN_PASSWORD",
+		"turnstile.site_key":         "TURNSTILE_SITE_KEY",
+		"turnstile.secret_key":       "TURNSTILE_SECRET_KEY",
 	}
 	for key, envName := range envBindings {
 		if err := reader.BindEnv(key, envName); err != nil {
@@ -176,6 +184,10 @@ func buildConfig(reader *viper.Viper) Config {
 		BootstrapAdmin: AdminConfig{
 			Username: strings.TrimSpace(reader.GetString("bootstrap_admin.username")),
 			Password: strings.TrimSpace(reader.GetString("bootstrap_admin.password")),
+		},
+		Turnstile: TurnstileConfig{
+			SiteKey:   strings.TrimSpace(reader.GetString("turnstile.site_key")),
+			SecretKey: strings.TrimSpace(reader.GetString("turnstile.secret_key")),
 		},
 	}
 }

@@ -18,3 +18,7 @@ database:
 bootstrap_admin:
   username: "admin"
   password: "admin123456"
+
+turnstile:
+  site_key: ""    # 从 Cloudflare Turnstile 控制台获取，留空则禁用
+  secret_key: ""  # 留空则禁用 Turnstile 验证

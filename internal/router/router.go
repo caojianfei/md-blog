@@ -37,6 +37,7 @@ func New(c *appcontainer.Container) http.Handler {
 	})
 
 	r.Route("/api/admin", func(apiRouter chi.Router) {
+		apiRouter.Get("/turnstile-config", api.TurnstileConfig)
 		apiRouter.Post("/login", api.Login)
 		apiRouter.Post("/logout", api.Logout)
 		apiRouter.Get("/me", api.Me)

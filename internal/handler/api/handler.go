@@ -30,14 +30,27 @@ type response struct {
 
 func New(c *appcontainer.Container) *Handler { return &Handler{c: c} }
 
+func (h *Handler) TurnstileConfig(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, response{Code: 0, Message: "ok", Data: map[string]string{
+		"siteKey": h.c.Config.Turnstile.SiteKey,
+	}})
+}
+
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
+		Username       string `json:"username"`
+		Password       string `json:"password"`
+		TurnstileToken string `json:"turnstileToken"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{Code: 400, Message: "invalid payload"})
 		return
+	}
+	if h.c.Config.Turnstile.SecretKey != "" {
+		if err := verifyTurnstile(h.c.Config.Turnstile.SecretKey, payload.TurnstileToken, r.RemoteAddr); err != nil {
+			writeJSON(w, http.StatusBadRequest, response{Code: 400, Message: "人机验证失败，请重试"})
+			return
+		}
 	}
 	admin, err := h.c.Auth.Login(w, r, payload.Username, payload.Password)
 	if err != nil {
@@ -45,6 +58,29 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, response{Code: 0, Message: "ok", Data: admin})
+}
+
+func verifyTurnstile(secretKey, token, remoteIP string) error {
+	body := fmt.Sprintf(`{"secret":%q,"response":%q,"remoteip":%q}`, secretKey, token, remoteIP)
+	resp, err := http.Post(
+		"https://challenges.cloudflare.com/turnstile/v0/siteverify",
+		"application/json",
+		strings.NewReader(body),
+	)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	var result struct {
+		Success bool `json:"success"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return err
+	}
+	if !result.Success {
+		return fmt.Errorf("turnstile verification failed")
+	}
+	return nil
 }
 
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
