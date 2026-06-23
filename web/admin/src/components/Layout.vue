@@ -2,6 +2,7 @@
 import { ref, watch, onMounted, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useUserStore } from "../store/user";
+import { useSettingsStore } from "../store/settings";
 import {
   LayoutDashboard,
   FileText,
@@ -19,6 +20,7 @@ import {
 const router = useRouter();
 const route = useRoute();
 const userStore = useUserStore();
+const settingsStore = useSettingsStore();
 
 const isMobileMenuOpen = ref(false);
 const layoutMode = computed(() => route.meta?.layout || "default");
@@ -52,6 +54,10 @@ const closeMobileMenu = () => {
 // Close mobile menu on route change
 watch(() => route.path, closeMobileMenu);
 
+watch(() => settingsStore.siteTitle, (title) => {
+  document.title = `${title} Admin`;
+});
+
 onMounted(async () => {
   if (!userStore.authed) {
     await userStore.loadMe();
@@ -59,6 +65,7 @@ onMounted(async () => {
       router.push("/login");
     }
   }
+  await settingsStore.loadSettings();
 });
 </script>
 
@@ -67,7 +74,7 @@ onMounted(async () => {
     
     <!-- Mobile Header -->
     <header class="md:hidden flex items-center justify-between p-4 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 z-20 sticky top-0">
-      <div class="font-bold text-lg text-zinc-900 dark:text-zinc-100 tracking-tight">MD Blog Admin</div>
+      <div class="font-bold text-lg text-zinc-900 dark:text-zinc-100 tracking-tight">{{ settingsStore.siteTitle }} Admin</div>
       <button @click="isMobileMenuOpen = !isMobileMenuOpen" class="p-2 -mr-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
         <Menu v-if="!isMobileMenuOpen" class="w-6 h-6" />
         <X v-else class="w-6 h-6" />
@@ -89,7 +96,7 @@ onMounted(async () => {
       ]"
     >
       <div class="p-6 hidden md:block">
-        <div class="font-bold text-xl text-zinc-900 dark:text-zinc-100 tracking-tight">MD Blog</div>
+        <div class="font-bold text-xl text-zinc-900 dark:text-zinc-100 tracking-tight">{{ settingsStore.siteTitle }}</div>
         <div class="text-sm text-zinc-500 dark:text-zinc-400 mt-1 truncate">@{{ userStore.me?.username }}</div>
       </div>
       <div class="p-6 pt-2 md:hidden flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800">

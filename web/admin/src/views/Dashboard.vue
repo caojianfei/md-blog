@@ -1,6 +1,9 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { request } from "../utils/request";
+import { useSettingsStore } from "../store/settings";
+
+const settingsStore = useSettingsStore();
 import { 
   FileText, 
   FileEdit, 
@@ -103,7 +106,7 @@ const cards = [
           </div>
           <h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">快速开始</h2>
         </div>
-        <p class="text-zinc-600 dark:text-zinc-400 mb-6">欢迎使用 MD Blog 管理后台。开始记录你的想法，分享你的知识。</p>
+        <p class="text-zinc-600 dark:text-zinc-400 mb-6">欢迎使用 {{ settingsStore.siteTitle }} 管理后台。开始记录你的想法，分享你的知识。</p>
         <div class="flex gap-3">
           <router-link 
             to="/articles/new" 
