@@ -20,7 +20,7 @@ const settings = reactive({
   heroDescription: "",
   logo: "",
   footerText: "",
-  themeDefault: "",
+  themeDefault: "system",
   githubUrl: "",
   icp: "",
   defaultOgImage: "",
@@ -325,7 +325,7 @@ watch(() => route.query.tab, (value) => {
                   v-model="settings.themeDefault"
                   class="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
                 >
-                  <option value="">跟随系统</option>
+                  <option value="system">跟随系统</option>
                   <option value="light">浅色</option>
                   <option value="dark">深色</option>
                 </select>
