@@ -57,6 +57,40 @@ func TestSaveRefreshesPublishedCounts(t *testing.T) {
 	assertTagCount(t, tagRepo, tagTwo.ID, 1)
 }
 
+func TestSaveKeepsPublishedStatusWhenStatusOmitted(t *testing.T) {
+	db := openArticleTestDB(t)
+	service, _, _, _ := newArticleTestService(t, db)
+
+	article, err := service.Save(context.Background(), SaveInput{
+		Title:   "Published Article",
+		Content: "# published",
+		Status:  model.ArticleStatusPublished,
+	})
+	if err != nil {
+		t.Fatalf("save published article: %v", err)
+	}
+	publishedAt := article.PublishedAt
+
+	// 编辑已发布文章但未显式传入 status，应保持已发布状态、不下线。
+	updated, err := service.Save(context.Background(), SaveInput{
+		ID:      article.ID,
+		Title:   "Published Article Edited",
+		Content: "# published edited",
+	})
+	if err != nil {
+		t.Fatalf("edit published article without status: %v", err)
+	}
+	if updated.Status != model.ArticleStatusPublished {
+		t.Fatalf("expected status to stay published, got %q", updated.Status)
+	}
+	if updated.PublishedAt == nil {
+		t.Fatalf("expected publishedAt to be preserved, got nil")
+	}
+	if publishedAt != nil && !updated.PublishedAt.Equal(*publishedAt) {
+		t.Fatalf("expected publishedAt unchanged, got %v want %v", updated.PublishedAt, publishedAt)
+	}
+}
+
 func TestDeleteRemovesTagRelationsAndRefreshesCounts(t *testing.T) {
 	db := openArticleTestDB(t)
 	service, categoryRepo, tagRepo, _ := newArticleTestService(t, db)

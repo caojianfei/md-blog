@@ -80,7 +80,11 @@ func (s *Service) Save(ctx context.Context, input SaveInput) (*model.Article, er
 
 	status := input.Status
 	if status == "" {
-		status = model.ArticleStatusDraft
+		if input.ID > 0 {
+			status = article.Status // 编辑时保留原状态，避免意外下线
+		} else {
+			status = model.ArticleStatusDraft
+		}
 	}
 
 	article.Title = title

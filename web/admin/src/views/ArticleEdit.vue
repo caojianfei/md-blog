@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { ArrowLeft, ChevronDown, ChevronUp, Save, Send } from "lucide-vue-next";
+import { ArrowLeft, ChevronDown, ChevronUp, EyeOff, Save, Send } from "lucide-vue-next";
 import CoverUploadField from "../components/CoverUploadField.vue";
 import EmojiPicker from "../components/EmojiPicker.vue";
 import MarkdownPreview from "../components/MarkdownPreview.vue";
@@ -59,8 +59,19 @@ const previewModeLabel = computed(() => {
   }
   return "仅编辑";
 });
-const draftButtonLabel = computed(() => (isSavingArticle.value && saveAction.value === "draft" ? "保存中..." : "保存草稿"));
-const publishButtonLabel = computed(() => (isSavingArticle.value && saveAction.value === "published" ? "发布中..." : "发布"));
+const isPublished = computed(() => editor.status === "published");
+const draftButtonLabel = computed(() => {
+  if (isSavingArticle.value && saveAction.value === "draft") {
+    return "保存中...";
+  }
+  return isPublished.value ? "转为草稿" : "保存草稿";
+});
+const publishButtonLabel = computed(() => {
+  if (isSavingArticle.value && saveAction.value === "published") {
+    return isPublished.value ? "更新中..." : "发布中...";
+  }
+  return isPublished.value ? "更新" : "发布";
+});
 
 const getDefaultPreviewMode = (width) =>
   width >= DESKTOP_SPLIT_BREAKPOINT ? "split" : "edit";
@@ -390,10 +401,23 @@ const loadArticle = async () => {
   }
 };
 
+const handleSecondaryAction = () => {
+  if (isSavingArticle.value) {
+    return;
+  }
+  // 已发布文章转为草稿是显式下线操作，需二次确认
+  if (isPublished.value && !window.confirm("转为草稿后文章将从前台下线，确定吗？")) {
+    return;
+  }
+  saveArticle("draft");
+};
+
 const saveArticle = async (status = editor.status) => {
   if (isSavingArticle.value) {
     return;
   }
+
+  const wasPublished = editor.status === "published";
 
   const normalizeID = (value) => {
     if (value === null || value === undefined || value === "") {
@@ -439,7 +463,11 @@ const saveArticle = async (status = editor.status) => {
       seoKeywords: data.seoKeywords,
     });
 
-    alert(status === "published" ? "文章已发布" : "草稿已保存");
+    if (status === "published") {
+      alert(wasPublished ? "文章已更新" : "文章已发布");
+    } else {
+      alert(wasPublished ? "已转为草稿" : "草稿已保存");
+    }
     router.replace("/articles");
   } catch (error) {
     alert(error.message || "保存失败");
@@ -507,11 +535,15 @@ onUnmounted(() => {
 
       <div class="flex items-center gap-2 sm:w-auto">
         <button
-          @click="saveArticle('draft')"
+          @click="handleSecondaryAction"
           :disabled="isSavingArticle"
           class="inline-flex flex-1 items-center justify-center rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700 sm:flex-none"
         >
-          <Save class="mr-2 h-4 w-4" :class="{ 'animate-spin': isSavingArticle && saveAction === 'draft' }" />
+          <component
+            :is="isPublished ? EyeOff : Save"
+            class="mr-2 h-4 w-4"
+            :class="{ 'animate-spin': isSavingArticle && saveAction === 'draft' }"
+          />
           {{ draftButtonLabel }}
         </button>
         <button
@@ -519,7 +551,11 @@ onUnmounted(() => {
           :disabled="isSavingArticle"
           class="inline-flex flex-1 items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none"
         >
-          <Send class="mr-2 h-4 w-4" :class="{ 'animate-spin': isSavingArticle && saveAction === 'published' }" />
+          <component
+            :is="isPublished ? Save : Send"
+            class="mr-2 h-4 w-4"
+            :class="{ 'animate-spin': isSavingArticle && saveAction === 'published' }"
+          />
           {{ publishButtonLabel }}
         </button>
       </div>
