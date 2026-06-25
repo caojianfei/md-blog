@@ -3,6 +3,11 @@ import { ref, reactive, onMounted } from "vue";
 import { request } from "../utils/request";
 import Modal from "../components/Modal.vue";
 import { Plus, Edit, Tags, Trash2 } from "lucide-vue-next";
+import { useToast } from "../composables/useToast.js";
+import { useConfirm } from "../composables/useConfirm.js";
+
+const { success, error, warning } = useToast();
+const { confirm } = useConfirm();
 
 const tags = ref([]);
 const isModalVisible = ref(false);
@@ -37,7 +42,7 @@ const openEditModal = (item) => {
 const saveTag = async () => {
   try {
     if (!editingForm.name) {
-      alert("标签名称不能为空");
+      warning("标签名称不能为空");
       return;
     }
     const payload = { ...editingForm };
@@ -46,34 +51,41 @@ const saveTag = async () => {
     isModalVisible.value = false;
     await loadData();
   } catch (err) {
-    alert(err.message || "保存失败");
+    error(err.message || "保存失败");
   }
 };
 
 const deleteTag = async (item) => {
-  if (!window.confirm(`确定删除标签「${item.name}」吗？`)) {
-    return;
-  }
+  const ok = await confirm({
+    title: `删除标签「${item.name}」`,
+    message: "此操作不可恢复，确定要删除吗？",
+    type: "danger",
+    confirmText: "删除",
+  });
+  if (!ok) return;
+
   try {
     await request(`/api/admin/tags/${item.id}`, { method: "DELETE" });
     await loadData();
   } catch (err) {
     if (err.status === 409) {
       const articleCount = err.data?.articleCount ?? item.articleCount ?? 0;
-      const confirmed = window.confirm(`该标签关联 ${articleCount} 篇文章，删除后会同步移除这些文章上的该标签，是否继续？`);
-      if (!confirmed) {
-        return;
-      }
+      const force = await confirm({
+        title: "该标签存在关联文章",
+        message: `该标签关联 ${articleCount} 篇文章，删除后会同步移除这些文章上的该标签，是否继续？`,
+        type: "warning",
+        confirmText: "强制删除",
+      });
+      if (!force) return;
       try {
         await request(`/api/admin/tags/${item.id}?force=1`, { method: "DELETE" });
         await loadData();
-        return;
       } catch (forceErr) {
-        alert(forceErr.message || "删除标签失败");
-        return;
+        error(forceErr.message || "删除标签失败");
       }
+      return;
     }
-    alert(err.message || "删除标签失败");
+    error(err.message || "删除标签失败");
   }
 };
 

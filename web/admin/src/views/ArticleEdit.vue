@@ -9,6 +9,11 @@ import MarkdownToolbar from "../components/MarkdownToolbar.vue";
 import TagSelector from "../components/TagSelector.vue";
 import { request } from "../utils/request";
 import { uploadMedia } from "../utils/media";
+import { useToast } from "../composables/useToast.js";
+import { useConfirm } from "../composables/useConfirm.js";
+
+const { success, error } = useToast();
+const { confirm } = useConfirm();
 
 const route = useRoute();
 const router = useRouter();
@@ -395,19 +400,25 @@ const loadArticle = async () => {
       seoDescription: data.seoDescription,
       seoKeywords: data.seoKeywords,
     });
-  } catch (error) {
-    alert(error.message || "加载文章失败");
+  } catch (err) {
+    error(err.message || "加载文章失败");
     router.push("/articles");
   }
 };
 
-const handleSecondaryAction = () => {
+const handleSecondaryAction = async () => {
   if (isSavingArticle.value) {
     return;
   }
   // 已发布文章转为草稿是显式下线操作，需二次确认
-  if (isPublished.value && !window.confirm("转为草稿后文章将从前台下线，确定吗？")) {
-    return;
+  if (isPublished.value) {
+    const ok = await confirm({
+      title: "转为草稿",
+      message: "转为草稿后文章将从前台下线，确定吗？",
+      type: "warning",
+      confirmText: "确认下线",
+    });
+    if (!ok) return;
   }
   saveArticle("draft");
 };
@@ -464,13 +475,13 @@ const saveArticle = async (status = editor.status) => {
     });
 
     if (status === "published") {
-      alert(wasPublished ? "文章已更新" : "文章已发布");
+      success(wasPublished ? "文章已更新" : "文章已发布");
     } else {
-      alert(wasPublished ? "已转为草稿" : "草稿已保存");
+      success(wasPublished ? "已转为草稿" : "草稿已保存");
     }
     router.replace("/articles");
-  } catch (error) {
-    alert(error.message || "保存失败");
+  } catch (err) {
+    error(err.message || "保存失败");
   } finally {
     isSavingArticle.value = false;
     saveAction.value = "";
@@ -493,7 +504,14 @@ onMounted(async () => {
   if (!isEdit.value) {
     const draft = localStorage.getItem("draft:new");
     if (draft && !editor.content) {
-      if (confirm("检测到未保存的草稿内容，是否恢复？")) {
+      const restore = await confirm({
+        title: "检测到未保存的草稿",
+        message: "检测到上次未保存的草稿内容，是否恢复？",
+        type: "warning",
+        confirmText: "恢复草稿",
+        cancelText: "丢弃",
+      });
+      if (restore) {
         editor.content = draft;
       } else {
         localStorage.removeItem("draft:new");

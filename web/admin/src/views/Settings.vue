@@ -5,6 +5,9 @@ import { request } from "../utils/request";
 import { Save, Settings, Info, FileText, Monitor, Globe, Image, Upload, Shield, HardDrive } from "lucide-vue-next";
 import CoverUploadField from "../components/CoverUploadField.vue";
 import { uploadMedia } from "../utils/media";
+import { useToast } from "../composables/useToast.js";
+
+const { success, error, warning } = useToast();
 
 const route = useRoute();
 const router = useRouter();
@@ -102,7 +105,7 @@ const handleLogoUpload = async (event) => {
     const media = await uploadMedia(file);
     settings.logo = media.url || "";
   } catch (err) {
-    alert(err.message || "上传失败");
+    error(err.message || "上传失败");
   } finally {
     isUploadingLogo.value = false;
     event.target.value = "";
@@ -138,9 +141,9 @@ const saveSettings = async () => {
     };
     const data = await request("/api/admin/settings", { method: "POST", body: JSON.stringify(payload) });
     Object.assign(settings, data);
-    alert("设置已保存");
+    success("设置已保存");
   } catch (err) {
-    alert(err.message || "保存失败");
+    error(err.message || "保存失败");
   } finally {
     isSaving.value = false;
   }
@@ -148,11 +151,11 @@ const saveSettings = async () => {
 
 const saveAccount = async () => {
   if (!account.username.trim()) {
-    alert("用户名不能为空");
+    warning("用户名不能为空");
     return;
   }
   if (account.newPassword && account.newPassword !== account.confirmPassword) {
-    alert("两次输入的密码不一致");
+    warning("两次输入的密码不一致");
     return;
   }
   isSavingAccount.value = true;
@@ -163,9 +166,9 @@ const saveAccount = async () => {
     });
     account.newPassword = "";
     account.confirmPassword = "";
-    alert("账号设置已保存");
+    success("账号设置已保存");
   } catch (err) {
-    alert(err.message || "账号设置保存失败");
+    error(err.message || "账号设置保存失败");
   } finally {
     isSavingAccount.value = false;
   }

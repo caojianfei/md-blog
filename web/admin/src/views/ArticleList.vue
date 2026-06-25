@@ -14,6 +14,11 @@ import {
   FileText,
   Trash2
 } from "lucide-vue-next";
+import { useToast } from "../composables/useToast.js";
+import { useConfirm } from "../composables/useConfirm.js";
+
+const { error } = useToast();
+const { confirm } = useConfirm();
 
 const router = useRouter();
 
@@ -51,19 +56,23 @@ const changeStatus = async (row) => {
     await request(`/api/admin/articles/${row.id}/status`, { method: "POST", body: JSON.stringify({ status }) });
     await loadAll();
   } catch (err) {
-    alert(err.message || "修改状态失败");
+    error(err.message || "修改状态失败");
   }
 };
 
 const deleteArticle = async (row) => {
-  if (!window.confirm(`确定删除文章「${row.title}」吗？此操作不可恢复。`)) {
-    return;
-  }
+  const ok = await confirm({
+    title: `删除文章「${row.title}」`,
+    message: "此操作不可恢复，文章删除后无法找回。",
+    type: "danger",
+    confirmText: "确认删除",
+  });
+  if (!ok) return;
   try {
     await request(`/api/admin/articles/${row.id}`, { method: "DELETE" });
     await loadAll();
   } catch (err) {
-    alert(err.message || "删除文章失败");
+    error(err.message || "删除文章失败");
   }
 };
 

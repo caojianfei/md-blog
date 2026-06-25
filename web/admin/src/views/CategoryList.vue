@@ -3,6 +3,11 @@ import { ref, reactive, onMounted } from "vue";
 import { request } from "../utils/request";
 import Modal from "../components/Modal.vue";
 import { Plus, Edit, FolderTree, Trash2 } from "lucide-vue-next";
+import { useToast } from "../composables/useToast.js";
+import { useConfirm } from "../composables/useConfirm.js";
+
+const { error, warning } = useToast();
+const { confirm } = useConfirm();
 
 const categories = ref([]);
 const isModalVisible = ref(false);
@@ -37,7 +42,7 @@ const openEditModal = (item) => {
 const saveCategory = async () => {
   try {
     if (!editingForm.name) {
-      alert("分类名称不能为空");
+      warning("分类名称不能为空");
       return;
     }
     const payload = { ...editingForm };
@@ -46,34 +51,41 @@ const saveCategory = async () => {
     isModalVisible.value = false;
     await loadData();
   } catch (err) {
-    alert(err.message || "保存失败");
+    error(err.message || "保存失败");
   }
 };
 
 const deleteCategory = async (item) => {
-  if (!window.confirm(`确定删除分类「${item.name}」吗？`)) {
-    return;
-  }
+  const ok = await confirm({
+    title: `删除分类「${item.name}」`,
+    message: "确定要删除这个分类吗？",
+    type: "danger",
+    confirmText: "删除",
+  });
+  if (!ok) return;
+
   try {
     await request(`/api/admin/categories/${item.id}`, { method: "DELETE" });
     await loadData();
   } catch (err) {
     if (err.status === 409) {
       const articleCount = err.data?.articleCount ?? item.articleCount ?? 0;
-      const confirmed = window.confirm(`该分类下有 ${articleCount} 篇文章，删除后这些文章将变为未分类，是否继续？`);
-      if (!confirmed) {
-        return;
-      }
+      const force = await confirm({
+        title: "该分类下有文章",
+        message: `该分类下有 ${articleCount} 篇文章，删除后这些文章将变为未分类，是否继续？`,
+        type: "warning",
+        confirmText: "强制删除",
+      });
+      if (!force) return;
       try {
         await request(`/api/admin/categories/${item.id}?force=1`, { method: "DELETE" });
         await loadData();
-        return;
       } catch (forceErr) {
-        alert(forceErr.message || "删除分类失败");
-        return;
+        error(forceErr.message || "删除分类失败");
       }
+      return;
     }
-    alert(err.message || "删除分类失败");
+    error(err.message || "删除分类失败");
   }
 };
 
