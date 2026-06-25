@@ -34,6 +34,12 @@ type ResolvedAI struct {
 	TimeoutSeconds int
 }
 
+type ResolvedCompression struct {
+	Enabled        bool
+	APIKey         string
+	TimeoutSeconds int
+}
+
 type ResolvedSettings struct {
 	Site          *model.SiteSetting
 	BaseURL       string
@@ -41,6 +47,7 @@ type ResolvedSettings struct {
 	MaxUploadSize int64
 	Storage       ResolvedStorage
 	AI            ResolvedAI
+	Compression   ResolvedCompression
 }
 
 type Service struct {
@@ -92,6 +99,11 @@ func (s *Service) Resolve() (*ResolvedSettings, error) {
 			APIKey:         normalized.AIAPIKey,
 			BaseURL:        normalized.AIBaseURL,
 			TimeoutSeconds: normalized.AITimeoutSeconds,
+		},
+		Compression: ResolvedCompression{
+			Enabled:        normalized.ImageCompressionEnabled,
+			APIKey:         normalized.TinyPNGAPIKey,
+			TimeoutSeconds: normalized.TinyPNGTimeoutSeconds,
 		},
 	}, nil
 }
@@ -177,6 +189,9 @@ func (s *Service) Validate(site *model.SiteSetting) error {
 	if site.AIProvider == "openai_compatible" && strings.TrimSpace(site.AIBaseURL) == "" {
 		return fmt.Errorf("aiBaseUrl cannot be empty when aiProvider is openai_compatible")
 	}
+	if site.ImageCompressionEnabled && strings.TrimSpace(site.TinyPNGAPIKey) == "" {
+		return fmt.Errorf("tinypngApiKey cannot be empty when image compression is enabled")
+	}
 	return nil
 }
 
@@ -240,6 +255,10 @@ func (s *Service) normalize(input *model.SiteSetting) *model.SiteSetting {
 	normalized.AIModel = strings.TrimSpace(normalized.AIModel)
 	normalized.AIAPIKey = strings.TrimSpace(normalized.AIAPIKey)
 	normalized.AIBaseURL = trimTrailingSlash(normalized.AIBaseURL, "")
+	normalized.TinyPNGAPIKey = strings.TrimSpace(normalized.TinyPNGAPIKey)
+	if normalized.TinyPNGTimeoutSeconds <= 0 {
+		normalized.TinyPNGTimeoutSeconds = 120
+	}
 	if normalized.StorageS3PublicURL == "" {
 		normalized.StorageS3PublicURL = trimTrailingSlash(normalized.StoragePublicURL, "")
 	}

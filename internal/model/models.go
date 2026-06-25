@@ -95,6 +95,9 @@ type SiteSetting struct {
 	AIAPIKey          string `json:"aiApiKey" gorm:"size:255"`
 	AIBaseURL         string `json:"aiBaseUrl" gorm:"size:255"`
 	AITimeoutSeconds  int    `json:"aiTimeoutSeconds"`
+	ImageCompressionEnabled bool   `json:"imageCompressionEnabled"`
+	TinyPNGAPIKey           string `json:"tinypngApiKey" gorm:"size:255"`
+	TinyPNGTimeoutSeconds   int    `json:"tinypngTimeoutSeconds"`
 }
 
 type AdminUser struct {

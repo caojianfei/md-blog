@@ -47,6 +47,9 @@ const settings = reactive({
   aiApiKey: "",
   aiBaseUrl: "https://api.openai.com/v1",
   aiTimeoutSeconds: 15,
+  imageCompressionEnabled: false,
+  tinypngApiKey: "",
+  tinypngTimeoutSeconds: 120,
 });
 
 const tabs = [
@@ -543,6 +546,48 @@ watch(() => route.query.tab, (value) => {
                 <input v-model="settings.storageS3UseSsl" type="checkbox" class="h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-500" />
                 使用 SSL
               </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="border-t border-zinc-200 p-6 dark:border-zinc-800 xl:p-8">
+          <div class="mb-6 flex items-center gap-2">
+            <Upload class="w-5 h-5 text-orange-500" />
+            <h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">图片压缩</h2>
+          </div>
+
+          <div class="space-y-6">
+            <label class="inline-flex items-center gap-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              <input v-model="settings.imageCompressionEnabled" type="checkbox" class="h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-500" />
+              启用 TinyPNG 图片压缩（上传时自动压缩 PNG / JPEG / WebP）
+            </label>
+
+            <div v-if="settings.imageCompressionEnabled" class="space-y-4">
+              <div>
+                <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  TinyPNG API Key <span class="text-red-500">*</span>
+                </label>
+                <input
+                  v-model="settings.tinypngApiKey"
+                  type="password"
+                  class="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 md:w-1/2"
+                  placeholder="输入 TinyPNG API 密钥"
+                />
+                <p class="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">在 <span class="font-medium">tinypng.com</span> 注册后获取密钥，每月免费压缩 500 张图片。</p>
+              </div>
+              <div>
+                <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  压缩超时时间（秒）
+                </label>
+                <input
+                  v-model.number="settings.tinypngTimeoutSeconds"
+                  type="number"
+                  min="30"
+                  class="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 md:w-48"
+                  placeholder="120"
+                />
+                <p class="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">建议设置 <span class="font-medium text-amber-500 dark:text-amber-400">120 秒及以上</span>，避免大图压缩频繁超时。</p>
+              </div>
             </div>
           </div>
         </div>

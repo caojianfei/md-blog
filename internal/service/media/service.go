@@ -1,9 +1,13 @@
 package media
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"mime/multipart"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,15 +22,22 @@ import (
 )
 
 type Service struct {
-	boot           config.Config
-	settings       *settingSvc.Service
-	repo           *repository.MediaRepository
-	client         *minio.Client
+	boot            config.Config
+	settings        *settingSvc.Service
+	repo            *repository.MediaRepository
+	client          *minio.Client
 	clientSignature string
 }
 
 func New(cfg config.Config, settings *settingSvc.Service, repo *repository.MediaRepository) (*Service, error) {
 	return &Service{boot: cfg, settings: settings, repo: repo}, nil
+}
+
+var compressibleMIMETypes = map[string]bool{
+	"image/png":  true,
+	"image/jpeg": true,
+	"image/webp": true,
+	"image/avif": true,
 }
 
 func (s *Service) Upload(file multipart.File, header *multipart.FileHeader) (*model.Media, error) {
@@ -35,15 +46,37 @@ func (s *Service) Upload(file multipart.File, header *multipart.FileHeader) (*mo
 	if err != nil {
 		return nil, err
 	}
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	mimeType := header.Header.Get("Content-Type")
+	if resolved.Compression.Enabled && compressibleMIMETypes[mimeType] {
+		compressed, err := s.compressWithTinyPNG(resolved.Compression.APIKey, data, mimeType, resolved.Compression.TimeoutSeconds)
+		if err != nil {
+			return nil, fmt.Errorf("图片压缩失败: %w", err)
+		}
+		data = compressed
+	}
+
 	objectKey := fmt.Sprintf("%d-%s", time.Now().UnixNano(), sanitizeFilename(header.Filename))
-	media := &model.Media{Filename: objectKey, Original: header.Filename, MIMEType: header.Header.Get("Content-Type"), Size: header.Size, StorageType: resolved.Storage.Driver, ObjectKey: objectKey}
+	media := &model.Media{
+		Filename:    objectKey,
+		Original:    header.Filename,
+		MIMEType:    mimeType,
+		Size:        int64(len(data)),
+		StorageType: resolved.Storage.Driver,
+		ObjectKey:   objectKey,
+	}
 
 	if resolved.Storage.Driver == "s3" {
 		client, err := s.ensureS3Client(resolved)
 		if err != nil {
 			return nil, err
 		}
-		_, err = client.PutObject(context.Background(), resolved.Storage.S3Bucket, objectKey, file, header.Size, minio.PutObjectOptions{ContentType: media.MIMEType})
+		_, err = client.PutObject(context.Background(), resolved.Storage.S3Bucket, objectKey, bytes.NewReader(data), int64(len(data)), minio.PutObjectOptions{ContentType: media.MIMEType})
 		if err != nil {
 			return nil, err
 		}
@@ -61,12 +94,7 @@ func (s *Service) Upload(file multipart.File, header *multipart.FileHeader) (*mo
 			return nil, err
 		}
 		targetPath := filepath.Join(resolved.Storage.LocalDirAbs, objectKey)
-		target, err := os.Create(targetPath)
-		if err != nil {
-			return nil, err
-		}
-		defer target.Close()
-		if _, err := target.ReadFrom(file); err != nil {
+		if err := os.WriteFile(targetPath, data, 0o644); err != nil {
 			return nil, err
 		}
 		media.URL = resolved.Storage.LocalBaseURL + "/" + objectKey
@@ -104,6 +132,51 @@ func (s *Service) ensureS3Client(resolved *settingSvc.ResolvedSettings) (*minio.
 	s.client = client
 	s.clientSignature = signature
 	return client, nil
+}
+
+func (s *Service) compressWithTinyPNG(apiKey string, data []byte, mimeType string, timeoutSeconds int) ([]byte, error) {
+	httpClient := &http.Client{Timeout: time.Duration(timeoutSeconds) * time.Second}
+
+	req, err := http.NewRequest(http.MethodPost, "https://api.tinify.com/shrink", bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	req.SetBasicAuth("api", apiKey)
+	req.Header.Set("Content-Type", mimeType)
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		var errResp struct {
+			Error   string `json:"error"`
+			Message string `json:"message"`
+		}
+		_ = json.NewDecoder(resp.Body).Decode(&errResp)
+		return nil, fmt.Errorf("%s: %s", errResp.Error, errResp.Message)
+	}
+
+	location := resp.Header.Get("Location")
+	if location == "" {
+		return nil, fmt.Errorf("tinypng 未返回压缩图地址")
+	}
+
+	getReq, err := http.NewRequest(http.MethodGet, location, nil)
+	if err != nil {
+		return nil, err
+	}
+	getReq.SetBasicAuth("api", apiKey)
+
+	getResp, err := httpClient.Do(getReq)
+	if err != nil {
+		return nil, err
+	}
+	defer getResp.Body.Close()
+
+	return io.ReadAll(getResp.Body)
 }
 
 func sanitizeFilename(name string) string {

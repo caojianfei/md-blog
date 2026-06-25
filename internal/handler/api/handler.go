@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	appcontainer "github.com/cybernote/md-blog/internal/container"
 	"github.com/cybernote/md-blog/internal/model"
@@ -397,6 +398,11 @@ func (h *Handler) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, response{Code: 500, Message: err.Error()})
 		return
+	}
+	if resolved.Compression.Enabled {
+		// 压缩超时由配置决定，额外加 30 秒余量供响应写入
+		deadline := time.Duration(resolved.Compression.TimeoutSeconds+30) * time.Second
+		_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(deadline))
 	}
 	if err := r.ParseMultipartForm(resolved.MaxUploadSize); err != nil {
 		writeJSON(w, http.StatusBadRequest, response{Code: 400, Message: err.Error()})
