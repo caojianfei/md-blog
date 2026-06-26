@@ -6,6 +6,7 @@ import CoverUploadField from "../components/CoverUploadField.vue";
 import EmojiPicker from "../components/EmojiPicker.vue";
 import MarkdownPreview from "../components/MarkdownPreview.vue";
 import MarkdownToolbar from "../components/MarkdownToolbar.vue";
+import Modal from "../components/Modal.vue";
 import TagSelector from "../components/TagSelector.vue";
 import { request } from "../utils/request";
 import { uploadMedia } from "../utils/media";
@@ -37,7 +38,6 @@ const editor = reactive({
 const categories = ref([]);
 const tags = ref([]);
 const previewMode = ref("edit");
-const editorMessage = ref("");
 const isSettingsOpen = ref(true);
 const isEmojiPickerOpen = ref(false);
 const editorTextarea = ref(null);
@@ -48,6 +48,16 @@ const editorSelection = reactive({
   start: 0,
   end: 0,
 });
+
+const isLinkModalOpen = ref(false);
+const linkForm = reactive({
+  text: "",
+  url: "",
+});
+const linkTextInput = ref(null);
+const linkUrlInput = ref(null);
+// 打开链接弹窗时记录当时的光标选区，避免弹窗夺取焦点后选区丢失
+const linkSelectionSnapshot = ref(null);
 
 const isEdit = computed(() => !!route.params.id);
 const editorWords = computed(() => (editor.content || "").trim().split(/\s+/).filter(Boolean).length);
@@ -107,17 +117,6 @@ const syncResponsiveEditorState = (forceDefault = false) => {
 
 const handleWindowResize = () => {
   syncResponsiveEditorState();
-};
-
-const showEditorMessage = (message) => {
-  editorMessage.value = message;
-  if (message) {
-    window.setTimeout(() => {
-      if (editorMessage.value === message) {
-        editorMessage.value = "";
-      }
-    }, 3000);
-  }
 };
 
 const syncEditorSelection = () => {
@@ -271,17 +270,33 @@ const handleEmojiSelect = async (emoji) => {
 const insertLink = async () => {
   const snapshot = await getSelectionSnapshot();
   const selectedText = snapshot.content.slice(snapshot.start, snapshot.end).trim();
-  const text = window.prompt("链接文本", selectedText || "点击这里");
-  if (text === null) {
+
+  linkSelectionSnapshot.value = snapshot;
+  linkForm.text = selectedText;
+  linkForm.url = "https://";
+  isLinkModalOpen.value = true;
+
+  await nextTick();
+  // 已选中文本时直接聚焦地址输入，否则聚焦文本输入
+  const target = selectedText ? linkUrlInput.value : linkTextInput.value;
+  target?.focus();
+  target?.select?.();
+};
+
+const confirmLink = async () => {
+  const snapshot = linkSelectionSnapshot.value;
+  if (!snapshot) {
+    isLinkModalOpen.value = false;
     return;
   }
 
-  const url = window.prompt("链接地址", "https://");
-  if (url === null) {
-    return;
-  }
+  const text = linkForm.text.trim() || "链接";
+  const url = linkForm.url.trim() || "https://";
+  const markdown = `[${text}](${url})`;
 
-  const markdown = `[${text || "链接"}](${url || "https://"})`;
+  isLinkModalOpen.value = false;
+  linkSelectionSnapshot.value = null;
+
   await replaceRange(snapshot.start, snapshot.end, markdown, {
     selectionStartOffset: markdown.length,
     selectionEndOffset: markdown.length,
@@ -349,21 +364,57 @@ const handleToolbarAction = async (action) => {
   }
 };
 
+// 上传中占位图（内联 SVG），在预览区显示"上传中"状态
+const UPLOADING_PLACEHOLDER_IMAGE =
+  "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='320'%20height='180'%3E%3Crect%20width='100%25'%20height='100%25'%20fill='%23f4f4f5'/%3E%3Ctext%20x='50%25'%20y='50%25'%20fill='%23a1a1aa'%20font-family='sans-serif'%20font-size='16'%20text-anchor='middle'%20dominant-baseline='middle'%3E%E2%8F%B3%20%E5%9B%BE%E7%89%87%E4%B8%8A%E4%BC%A0%E4%B8%AD%E2%80%A6%3C/text%3E%3C/svg%3E";
+
+let uploadTokenSeed = 0;
+
+// 用最终内容替换文本中的占位标记，并尽量保留光标位置
+const replacePlaceholder = async (placeholder, replacement) => {
+  const current = editor.content || "";
+  const index = current.indexOf(placeholder);
+  if (index === -1) {
+    return;
+  }
+
+  const textarea = editorTextarea.value;
+  const caretBefore = textarea ? textarea.selectionStart : null;
+  const delta = replacement.length - placeholder.length;
+
+  editor.content = `${current.slice(0, index)}${replacement}${current.slice(index + placeholder.length)}`;
+  await nextTick();
+
+  if (textarea && caretBefore !== null) {
+    // 占位符在光标之前被替换时，按长度差平移光标
+    const caret = caretBefore >= index + placeholder.length ? caretBefore + delta : caretBefore;
+    textarea.selectionStart = caret;
+    textarea.selectionEnd = caret;
+    syncEditorSelection();
+  }
+};
+
 const handleToolbarImageUpload = async (file) => {
   const snapshot = await getSelectionSnapshot();
-  showEditorMessage("图片上传中...");
+
+  // 立即插入占位图，先反馈"上传中"，用户可继续编辑
+  uploadTokenSeed += 1;
+  const token = `uploading-${Date.now()}-${uploadTokenSeed}`;
+  const placeholder = `![上传中… ${file.name}](${UPLOADING_PLACEHOLDER_IMAGE}#${token})`;
+
+  await replaceRange(snapshot.start, snapshot.end, placeholder, {
+    selectionStartOffset: placeholder.length,
+    selectionEndOffset: placeholder.length,
+    scrollTop: snapshot.scrollTop,
+  });
 
   try {
     const media = await uploadMedia(file);
-    const markdown = `![${file.name}](${media.url})`;
-    await replaceRange(snapshot.start, snapshot.end, markdown, {
-      selectionStartOffset: markdown.length,
-      selectionEndOffset: markdown.length,
-      scrollTop: snapshot.scrollTop,
-    });
-    showEditorMessage("图片已插入");
-  } catch (error) {
-    showEditorMessage(error.message || "上传失败");
+    await replacePlaceholder(placeholder, `![${file.name}](${media.url})`);
+  } catch (err) {
+    // 上传失败时移除占位图，并提示错误
+    await replacePlaceholder(placeholder, "");
+    error(err.message || "图片上传失败");
   }
 };
 
@@ -676,7 +727,6 @@ onUnmounted(() => {
             <MarkdownToolbar
               v-model:preview-mode="previewMode"
               :can-split="canUseSplitMode"
-              :message="editorMessage"
               :is-emoji-open="isEmojiPickerOpen"
               @action="handleToolbarAction"
               @toggle-emoji="toggleEmojiPicker"
@@ -725,5 +775,30 @@ onUnmounted(() => {
         </div>
       </section>
     </div>
+
+    <Modal v-model:visible="isLinkModalOpen" title="插入链接" @confirm="confirmLink">
+      <form class="space-y-4" @submit.prevent="confirmLink">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">链接文本</label>
+          <input
+            ref="linkTextInput"
+            v-model="linkForm.text"
+            class="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+            placeholder="显示的文字"
+          />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">链接地址</label>
+          <input
+            ref="linkUrlInput"
+            v-model="linkForm.url"
+            class="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+            placeholder="https://"
+          />
+        </div>
+        <!-- 隐藏提交按钮，支持回车提交 -->
+        <button type="submit" class="hidden"></button>
+      </form>
+    </Modal>
   </div>
 </template>
