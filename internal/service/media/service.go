@@ -3,9 +3,12 @@ package media
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -54,14 +57,17 @@ func (s *Service) Upload(file multipart.File, header *multipart.FileHeader) (*mo
 
 	mimeType := header.Header.Get("Content-Type")
 	if resolved.Compression.Enabled && compressibleMIMETypes[mimeType] {
-		compressed, err := s.compressWithTinyPNG(resolved.Compression.APIKey, data, mimeType, resolved.Compression.TimeoutSeconds)
-		if err != nil {
-			return nil, fmt.Errorf("图片压缩失败: %w", err)
+		compressed, compressErr := s.compressWithTinyPNG(resolved.Compression.APIKey, data, mimeType, resolved.Compression.TimeoutSeconds)
+		if compressErr != nil {
+			return nil, fmt.Errorf("图片压缩失败: %w", compressErr)
 		}
 		data = compressed
 	}
 
-	objectKey := fmt.Sprintf("%d-%s", time.Now().UnixNano(), sanitizeFilename(header.Filename))
+	objectKey, err := generateObjectKey(header.Filename, mimeType)
+	if err != nil {
+		return nil, err
+	}
 	media := &model.Media{
 		Filename:    objectKey,
 		Original:    header.Filename,
@@ -179,8 +185,49 @@ func (s *Service) compressWithTinyPNG(apiKey string, data []byte, mimeType strin
 	return io.ReadAll(getResp.Body)
 }
 
-func sanitizeFilename(name string) string {
-	lowered := strings.ToLower(strings.TrimSpace(name))
-	replacer := strings.NewReplacer(" ", "-", "/", "-", "\\", "-", "..", "", "_", "-")
-	return replacer.Replace(lowered)
+func generateObjectKey(originalName, mimeType string) (string, error) {
+	token, err := randomHex(16)
+	if err != nil {
+		return "", err
+	}
+	ext := safeExtension(originalName)
+	if ext == "" {
+		if exts, mimeErr := mime.ExtensionsByType(mimeType); mimeErr == nil {
+			for _, candidate := range exts {
+				if ext = safeExtension(candidate); ext != "" {
+					break
+				}
+			}
+		}
+	}
+	return token + ext, nil
+}
+
+func randomHex(size int) (string, error) {
+	buf := make([]byte, size)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(buf), nil
+}
+
+func safeExtension(name string) string {
+	ext := strings.ToLower(strings.TrimSpace(filepath.Ext(filepath.Base(name))))
+	if ext == "" {
+		return ""
+	}
+	var b strings.Builder
+	for i := 0; i < len(ext); i++ {
+		ch := ext[i]
+		if ch == '.' {
+			continue
+		}
+		if (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') {
+			b.WriteByte(ch)
+		}
+	}
+	if b.Len() == 0 {
+		return ""
+	}
+	return "." + b.String()
 }
